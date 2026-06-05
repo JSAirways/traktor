@@ -1,0 +1,67 @@
+// Profile Picture Selector Component Styles
+// Cat GIF selector for user management
+@use '../variables' as *;
+
+/* Scrollable container for profile picture selector */
+.cat-gif-selector-container {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.25rem;
+    margin: -0.25rem;
+    /* Custom scrollbar styling for better UX */
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-success) rgba(0, 0, 0, 0.1);
+}
+
+.cat-gif-selector-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cat-gif-selector-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.cat-gif-selector-container::-webkit-scrollbar-thumb {
+    background-color: var(--bs-success);
+    border-radius: 4px;
+}
+
+.cat-gif-selector-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--bs-success-rgb), 0.8);
+}
+
+.cat-gif-option {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cat-gif-option:hover .cat-gif-preview {
+    border-color: var(--bs-success) !important;
+    transform: scale(1.05);
+}
+
+.cat-gif-option.selected .cat-gif-preview {
+    border-color: var(--bs-success) !important;
+    border-width: 3px !important;
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-success-rgb), 0.25);
+}
+
+.cat-gif-preview {
+    transition: all 0.2s;
+    width: 100%;
+    max-width: 120px;
+    height: 120px;
+    background: transparent;
+    margin: 0 auto;
+}
+
+/* Ensure all cat GIF tiles maintain consistent width when col-lg-auto is active */
+@media (min-width: 992px) {
+    .cat-gif-selector .col-lg-auto {
+        flex: 0 0 auto;
+        width: 132px;
+    }
+}
+

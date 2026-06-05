@@ -1,0 +1,33 @@
+<?php
+
+return [
+    'return_to_gallery' => 'Back to Gallery',
+    'profile_selection' => 'Profile Selection',
+    'settings' => 'Settings',
+    'options' => 'Options',
+    'video' => 'Video',
+    'videos' => 'Videos',
+    'playlist' => 'Playlist',
+    'playlists' => 'Playlists',
+    'playlist_counter' => ':current / :total',
+    'no_videos' => 'No videos available',
+    'no_videos_found' => 'No Videos found...',
+    'no_playlists' => 'No playlists available',
+    'no_profiles_added' => 'No profiles added yet...',
+    'back_to_gallery' => '← Back to Gallery',
+    'video_count' => ':count video',
+    'videos_count' => ':count videos',
+    'filter_videos' => 'Videos',
+    'filter_playlists' => 'Playlists',
+    'all_videos' => 'All Videos',
+    'channel_sidebar_title' => 'Channels',
+    'video_thumbnail' => 'Video thumbnail',
+    'playlist_thumbnail' => 'Playlist thumbnail',
+    'player_loading' => 'Video player is still loading. Please wait a moment and try again.',
+    'video_load_error' => 'Error loading video. Please try again.',
+    'invalid_playlist_id' => 'Invalid playlist ID. Please try again.',
+    'unauthorized_access' => 'Unauthorized access. Please authenticate to continue.',
+    'invalid_playlist_data' => 'Invalid playlist data received from server.',
+    'playlist_load_failed' => 'Failed to load playlist videos.',
+];
+

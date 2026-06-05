@@ -1,0 +1,385 @@
+// Player Page Styles
+@use '../../variables' as *;
+
+/* ============================================
+   BASE LAYOUT - Full Viewport Video
+   ============================================ */
+
+/* Player view - fills entire viewport */
+.player-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #000000; /* Black background for letterboxing */
+}
+
+/* ============================================
+   VIDEO CONTAINER - Full Viewport with Centering
+   ============================================ */
+
+/* Video container - fills entire viewport, centers video */
+.player-view .video-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    /* Navbar and control bar are overlays, not taking space */
+}
+
+/* YouTube Player Container - Sized by JavaScript to fill screen while maintaining 16:9 */
+.player-view #player {
+    position: relative;
+    pointer-events: none;
+    transition: filter 0.3s ease-in-out;
+    /* JavaScript will set explicit width and height */
+    /* Initial state - will be sized by sizeVideoToFit() */
+    width: 100vw;
+    height: 56.25vw; /* 16:9 aspect ratio based on width */
+    max-width: 177.78vh; /* 16:9 aspect ratio based on height */
+    max-height: 100vh;
+}
+
+/* Ensure YouTube iframe inside #player fills its container */
+.player-view #player iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allow clicks to pass through to click blocker */
+}
+
+/* Blur effect when video is paused - ONLY affects the video iframe */
+.player-view #player.paused {
+    filter: blur(10px);
+    -webkit-filter: blur(10px);
+}
+
+/* ============================================
+   LAYER 2: CLICK BLOCKER - Intercepts all clicks
+   ============================================ */
+
+/* Click blocker layer - Covers entire viewport, intercepts clicks */
+.player-view .click-blocker-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1001;
+    pointer-events: auto !important;
+    background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+/* Exclude navbar and control bar areas from click blocker */
+.player-view .click-blocker-layer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px; /* Approximate navbar height */
+    pointer-events: none; /* Allow clicks through to navbar */
+    z-index: -1;
+}
+
+.player-view .click-blocker-layer::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px; /* Control bar height */
+    pointer-events: none; /* Allow clicks through to control bar */
+    z-index: -1;
+}
+
+/* ============================================
+   LAYER 3: OVERLAY - Blur + Cat GIF when paused
+   ============================================ */
+
+/* Overlay layer - Covers entire viewport, visual effects only */
+.player-view .overlay-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    pointer-events: none; /* Clicks pass through */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Video overlay effect (dark background when paused) */
+.player-view .overlay-layer .video-overlay-effect {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+}
+
+.player-view .overlay-layer .video-overlay-effect.active {
+    opacity: 1;
+}
+
+/* Cat GIF container - Centered in viewport */
+.player-view .overlay-layer .cat-gif-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    -webkit-transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out 0s;
+    pointer-events: none;
+}
+
+.player-view .overlay-layer .cat-gif-container.d-none:not([style*="display"]) {
+    display: none;
+    opacity: 0;
+}
+
+.player-view .overlay-layer .cat-gif-container.show {
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out 0s;
+}
+
+.player-view .overlay-layer .cat-gif-container.hide {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out 0s;
+}
+
+/* Cat GIF image */
+.player-view .overlay-layer .cat-gif-container img {
+    max-height: 40vh;
+    max-width: 40vw;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* ============================================
+   LAYER 4: CONTROLS - Navbar + Control Bar
+   ============================================ */
+
+/* Controls layer - Contains control bar (navbar is in layout) */
+.player-view .controls-layer {
+    z-index: 1002;
+    pointer-events: none; /* Container doesn't intercept, but children do */
+}
+
+/* ============================================
+   CONTROL BAR - Fixed Overlay at Bottom
+   ============================================ */
+
+/* Custom control bar - Fixed overlay at bottom of viewport */
+/* Does NOT take space from video - it's an overlay */
+.custom-control-bar,
+#customControlBar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 0 1rem;
+    pointer-events: auto !important;
+    color: var(--bs-white, #ffffff);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.5) 70%, rgba(0, 0, 0, 0) 100%);
+    z-index: 1002 !important; /* Above video overlays (1000-1001), below navbar (1003) */
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: opacity 0.3s ease-in-out;
+    min-height: 60px;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+    touch-action: manipulation;
+    margin: 0 !important;
+}
+
+/* Also target when inside player-view (for specificity) */
+.player-view .custom-control-bar,
+.player-view #customControlBar {
+    position: fixed !important;
+    bottom: 0 !important;
+}
+
+/* Hidden state - Only hide when explicitly hidden */
+.custom-control-bar.hidden,
+#customControlBar.hidden,
+.player-view .custom-control-bar.hidden,
+.player-view #customControlBar.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+/* ============================================
+   CONTROL BUTTONS AND ELEMENTS
+   ============================================ */
+
+/* Control buttons */
+.player-view .custom-control-btn {
+    background: transparent;
+    border: none;
+    color: var(--bs-white, #ffffff);
+    padding: 12px; /* Increased from 8px for better touch target */
+    min-width: 44px; /* Minimum touch target size (44x44px) */
+    min-height: 44px; /* Minimum touch target size */
+    display: flex; /* Ensure proper centering */
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+    touch-action: manipulation;
+    /* Ensure buttons are above click blocker */
+    position: relative;
+    z-index: 1003;
+}
+
+/* Ensure SVG icons don't block pointer events - allow clicks to pass through to button */
+.player-view .custom-control-btn svg {
+    pointer-events: none; /* Allow clicks to pass through to button */
+    width: 40px;
+    height: 40px;
+}
+
+.player-view .custom-control-btn:hover {
+    opacity: 0.7;
+}
+
+.player-view .custom-control-btn:active {
+    opacity: 0.5;
+}
+
+.player-view .custom-play-pause {
+    flex-shrink: 0;
+}
+
+.player-view .custom-fullscreen {
+    flex-shrink: 0;
+}
+
+/* Progress container */
+.player-view .custom-progress-container {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: calc(100% - 280px); /* Reserve space for play button, time display, and fullscreen button */
+    /* Ensure progress bar is clickable */
+    position: relative;
+    z-index: 1003;
+}
+
+/* Progress bar */
+.player-view .custom-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+    touch-action: manipulation;
+    z-index: 1003;
+}
+
+.player-view .custom-progress-fill {
+    height: 100%;
+    background: var(--bs-white, #ffffff);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+/* Time display */
+.player-view .custom-time-display {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1003;
+}
+
+/* ============================================
+   RESPONSIVE STYLES
+   ============================================ */
+
+/* Responsive styles for small screens (< sm breakpoint) */
+@media (max-width: 575.98px) {
+    .player-view .custom-time-display {
+        position: absolute;
+        bottom: 80%;
+        left: calc(1rem + 56px + 12px);
+        font-size: 1rem;
+        width: auto;
+        white-space: nowrap;
+    }
+    
+    .player-view .custom-progress-container {
+        max-width: calc(100% - 120px);
+    }
+}
+
+/* ============================================
+   FULLSCREEN MODE
+   ============================================ */
+
+/* Fullscreen mode styles */
+.player-view:fullscreen,
+.player-view:-webkit-full-screen,
+.player-view:-moz-full-screen,
+.player-view:-ms-fullscreen {
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+}
+
+.player-view:fullscreen .custom-controls,
+.player-view:-webkit-full-screen .custom-controls,
+.player-view:-moz-full-screen .custom-controls,
+.player-view:-ms-fullscreen .custom-controls {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+}

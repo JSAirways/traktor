@@ -1,0 +1,47 @@
+// Main SCSS file - imports all modules
+
+// Use SCSS modules (modern @use syntax - must come before @import)
+// No underscore or extension needed for partials
+
+// 1. Variables
+@use 'scss/variables';
+
+// 2. Layout
+@use 'scss/layout/navbar';
+@use 'scss/layout/gallery';
+
+// 3. Components (alphabetical)
+@use 'scss/components/forms';
+@use 'scss/components/modals';
+@use 'scss/components/profile-picture-selector';
+@use 'scss/components/options-menu-offcanvas';
+@use 'scss/components/shared';
+@use 'scss/components/toast-notification';
+
+// 4. Resources (alphabetical)
+// Note: galleries/show styles are handled by layout/gallery and components
+@use 'scss/resources/galleries/index' as galleries-index;
+@use 'scss/resources/galleries/view-transitions';
+@use 'scss/resources/pins/entry';
+@use 'scss/resources/player/show' as player-show;
+@use 'scss/resources/profiles/selection';
+@use 'scss/resources/video-player/video-player';
+@use 'scss/resources/welcome/index';
+
+// Note: Account and device resources don't have dedicated SCSS files yet
+// Styles are handled by components and layouts
+
+// 5. Admin Resources
+@use 'scss/admin/admin';
+@use 'scss/admin/dashboard';
+
+// Import Bootstrap and Bootstrap Icons (CSS files must use @import)
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+// Optimize font loading with font-display: swap for better perceived performance
+@font-face {
+    font-family: 'bootstrap-icons';
+    font-display: swap;
+}
+

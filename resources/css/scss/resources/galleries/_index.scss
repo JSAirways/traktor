@@ -1,0 +1,55 @@
+// Unified Gallery/Player View Container Styles
+@use '../../variables' as *;
+
+/* ============================================
+   VIEW CONTAINERS
+   ============================================ */
+
+/* Gallery view - Full height container with internal scrolling */
+.gallery-view {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 80px); /* Full height minus navbar */
+    overflow: hidden; /* Prevent page-level scrolling - only content area scrolls */
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Player view - Full viewport container */
+.player-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 100;
+    overflow: hidden;
+    background-color: var(--bs-dark);
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Hidden state - use Bootstrap d-none class */
+.gallery-view.d-none,
+.player-view.d-none {
+    display: none;
+}
+
+/* ============================================
+   LOADING SPINNER POSITIONING
+   ============================================ */
+
+/* Loading spinner overlay - covers entire viewport */
+.loading-spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background-color: var(--bs-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+

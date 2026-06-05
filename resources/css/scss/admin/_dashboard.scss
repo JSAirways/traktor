@@ -1,0 +1,101 @@
+// Dashboard Styles
+
+.dashboard-loading {
+    min-height: 400px;
+}
+
+.dashboard-activity-overview,
+.dashboard-content-insights {
+    .card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+// Weekly Chart
+.weekly-chart-bars {
+    .bar {
+        transition: height 0.3s ease;
+    }
+}
+
+// Peak Hours Chart
+.peak-hours-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+    
+    .hour-cell {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: white;
+        cursor: help;
+        transition: opacity 0.2s ease;
+        
+        &:hover {
+            opacity: 1 !important;
+        }
+    }
+}
+
+// Day Patterns
+.day-patterns-bars {
+    .progress {
+        background-color: var(--bs-gray-200);
+    }
+}
+
+// Recent Activity
+.recent-activity-list {
+    .list-group-item {
+        border-left: none;
+        border-right: none;
+        
+        &:first-child {
+            border-top: none;
+        }
+        
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
+
+// Most Watched Videos
+.most-watched-videos {
+    .list-group-item {
+        img {
+            object-fit: cover;
+        }
+    }
+}
+
+// Re-watch Favorites Grid
+.rewatch-favorites-grid {
+    .card {
+        transition: transform 0.2s ease;
+        
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+}
+
+// Completion Rates
+.completion-stats {
+    .progress {
+        background-color: var(--bs-gray-200);
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .peak-hours-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+

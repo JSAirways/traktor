@@ -1,0 +1,26 @@
+{
+  "name": "Traktor",
+  "short_name": "Traktor",
+  "description": "Traktor - Video Gallery Application",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#212529",
+  "background_color": "#212529",
+  "author": "Jonan Steiner",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+// Admin Panel Styles
+@use '../variables' as *;
+
+/* Remove border from auth form cards */
+body.bg-dark .card {
+    border: none;
+}
+
+/* Form control text color - ensure text is visible */
+.admin-layout .form-control {
+    color: var(--bs-dark);
+}
+
+/* Green focus colors for admin forms only */
+.admin-layout .form-control:focus {
+    border-color: var(--bs-success);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.25);
+    color: var(--bs-dark);
+}
+
+/* Admin panel - change active nav link to green */
+.admin-layout .nav-link {
+    color: var(--bs-secondary);
+    transition: color 0.2s;
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-layout .nav-link:hover {
+    color: var(--bs-success);
+}
+
+.admin-layout .nav-link.active {
+    color: var(--bs-success) !important;
+    font-weight: 600;
+}
+
+.admin-layout .nav-item:last-child .nav-link {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Grid icon hover effect - backend */
+.admin-layout .navbar a[href*="gallery"]:hover i {
+    color: var(--bs-success) !important;
+    transition: color 0.2s;
+}
+
+/* Success color styles for admin (replacing primary) */
+.admin-layout .btn-success {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+.admin-layout .btn-success:hover {
+    background-color: color-mix(in srgb, var(--bs-success) 90%, black);
+    border-color: color-mix(in srgb, var(--bs-success) 85%, black);
+}
+
+.admin-layout .btn-outline-success {
+    color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+.admin-layout .btn-outline-success:hover {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+    color: var(--bs-white);
+}
+
+/* Make checkboxes larger (exclude toggle switches) */
+.admin-layout .form-check:not(.form-switch) .form-check-input[type="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.125rem;
+    margin-right: 0.75rem; /* Increased spacing between checkbox and label text */
+}
+
+/* Accordion button in users table - green chevron icons */
+.admin-layout .table .accordion-button {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    
+    /* Hide default Bootstrap accordion icon */
+    &::after {
+        display: none;
+    }
+    
+    i {
+        color: var(--bs-success);
+        font-size: 0.875rem;
+        position: absolute;
+        transition: opacity 0.2s;
+    }
+    
+    /* Show chevron-right when collapsed, hide chevron-down */
+    &.collapsed .bi-chevron-right {
+        opacity: 1;
+    }
+    
+    &.collapsed .bi-chevron-down {
+        opacity: 0;
+    }
+    
+    /* Hide chevron-right when expanded, show chevron-down */
+    &:not(.collapsed) .bi-chevron-right {
+        opacity: 0;
+    }
+    
+    &:not(.collapsed) .bi-chevron-down {
+        opacity: 1;
+    }
+}
+
+.admin-layout .form-check:not(.form-switch) .form-check-input[type="checkbox"]:checked {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+}
+
+/* Make toggle switches green */
+.admin-layout .form-switch .form-check-input:checked {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+/* Ensure consistent toggle switch sizing */
+.admin-layout .form-switch {
+    font-size: 1rem;
+}
+
+.admin-layout .form-switch .form-check-input {
+    width: 2em;
+    height: 1em;
+}
+
+.admin-layout .form-check-input:focus {
+    border-color: var(--bs-success);
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.25);
+}
+
+/* Options menu offcanvas slide-in animation */
+body.admin-layout #optionsMenuOffcanvas {
+    transition: transform 0.3s ease-out !important;
+}
+
+/* Backdrop fade-in animation */
+body.admin-layout .offcanvas-backdrop {
+    transition: opacity 0.2s ease-in;
+}
+

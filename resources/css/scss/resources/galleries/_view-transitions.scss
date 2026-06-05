@@ -1,0 +1,40 @@
+// View Transition Styles
+@use '../../variables' as *;
+
+/* ============================================
+   VIEW TRANSITIONS
+   ============================================ */
+
+/* Smooth transitions for view switching */
+.gallery-view,
+.player-view {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Body class-based view state management */
+body.view-gallery {
+    overflow: hidden;
+    height: 100vh;
+    
+    .gallery-view {
+        display: block;
+    }
+    
+    .player-view {
+        display: none;
+    }
+}
+
+body.view-player {
+    overflow: hidden;
+    height: 100vh;
+    
+    .gallery-view {
+        display: none;
+    }
+    
+    .player-view {
+        display: block;
+    }
+}
+

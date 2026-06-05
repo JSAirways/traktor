@@ -1,0 +1,9 @@
+// Video Player Styles
+// General video player styles (player page specific styles are in player/_show.scss)
+@use '../../variables' as *;
+
+/* General video player iframe styles */
+#player {
+    pointer-events: none; /* Block all clicks on YouTube iframe */
+    transition: filter 0.3s ease-in-out;
+}

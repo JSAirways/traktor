@@ -1,0 +1,644 @@
+// Gallery and Playlist Styles
+// 
+// Gallery Structure Layers (using data-layer attributes for clarity):
+// - data-layer="loading" - Loading spinner overlay
+// - data-layer="gallery-container" - Main gallery container
+// - data-layer="layout" - Layout wrapper (two-column or single-column)
+// - data-layer="sidebar" - Channel sidebar (desktop)
+// - data-layer="main-content" - Main content area
+// - data-layer="header" - Header container (channel header, playlist header)
+// - data-layer="content-scrollable" - Scrollable content area
+// - data-layer="content-grid" - Gallery tiles grid (#galleryContent)
+// - data-layer="empty-state" - Empty gallery state
+// - data-layer="back-button" - Back button container
+//
+// Orientation: Uses body.is-landscape class (set by orientation.js) instead of media queries
+// Breakpoints: Uses Bootstrap breakpoint variables from _variables.scss
+//
+@use '../variables' as *;
+
+/* Playlist header in gallery view */
+#playlistHeader {
+    // Match channel header layout
+    margin-bottom: 1rem;
+    margin-top: 0.5rem; // Add spacing between channel header and playlist header
+    
+    // Show when playlist-active class is present (JavaScript adds this)
+    &.playlist-active {
+        display: flex !important;
+    }
+    
+    // Mobile landscape: Hide container (elements positioned individually on left)
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            display: none !important;
+        }
+    }
+    
+    // Playlist title styling (desktop and mobile)
+    #playlistTitle {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        
+        // Larger on desktop
+        @media (min-width: $bootstrap-md) {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+        }
+    }
+    
+    // Back button styling
+    #playlistBackBtn {
+        // Uses Bootstrap btn-outline-light styling
+        i {
+            margin-right: 0.25rem;
+        }
+        
+        // Mobile landscape: Hide regular back button when playlist is active (use landscape version instead)
+        @media (max-width: $bootstrap-mobile-max) {
+            body.is-landscape .gallery-header-container:has(.playlist-active) & {
+                display: none !important;
+            }
+        }
+    }
+    
+}
+
+/* Channel header container */
+#channelHeaderContainer {
+    // Ensure proper flex layout with title and thumbnail
+    flex-wrap: nowrap;
+    min-width: 0; // Allow container to shrink
+    gap: 1rem !important; // Increased spacing between elements (overrides gap-2 from Blade)
+    
+    // Hide channel name and picture in playlist view on mobile (both portrait and landscape)
+    @media (max-width: $bootstrap-mobile-max) {
+        .gallery-header-container:has(.playlist-active) & {
+            display: none !important;
+        }
+    }
+    
+    // Ensure playlist/channel title truncates properly
+    #channelNameHeader {
+        &.text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
+            min-width: 0; // Allow flex item to shrink below content size
+            max-width: 100%; // Prevent overflow
+        }
+        
+        // Increased margin to channel thumbnail (applies to both playlist and channel title)
+        margin-right: 1rem;
+    }
+    
+    // Channel thumbnail should not shrink
+    #channelThumbnailContainer {
+        flex-shrink: 0;
+    }
+}
+
+.video-tile {
+    display: flex;
+    height: inherit;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: 2px solid transparent;
+    // CSS containment for better rendering performance
+    contain: layout style paint;
+}
+
+.video-tile:hover {
+    transform: scale(0.99);
+    border-color: var(--bs-success);
+}
+
+/* Video overlay - positioned at bottom of tile */
+.video-tile .video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+/* Video overlay content with gradient background */
+.video-tile .video-overlay-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right:0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.75) 50%, rgba(0, 0, 0, 0) 100%);
+    padding: 0.5rem;
+    padding-top: 3rem; /* pt-5 equivalent for gradient effect */
+}
+
+/* Button hover effects */
+.btn-transparent:hover i,
+.btn-outline-light:hover i {
+    color: var(--bs-success) !important;
+    transition: color 0.2s;
+}
+
+/* Smooth transition for icons */
+.btn-transparent i,
+.btn-outline-light i,
+.admin-layout .navbar a[href*="gallery"] i {
+    transition: color 0.2s;
+}
+
+// Content filter pills styling
+#contentFilterPills {
+    gap: 0.5rem; // Add spacing between pills
+    
+    // Mobile landscape: More compact pills
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            gap: 0.375rem; // Reduced gap between pills
+        }
+    }
+    
+    .nav-link {
+        border: none !important; // Remove border
+        border-radius: 50rem !important; // Fully rounded pills
+        transition: all 0.2s;
+        padding: 0.5rem 0.75rem; // Reduced padding for icon-only pills, increased for text
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px; // Ensure minimum touch target size
+        min-height: 44px;
+        
+        // Mobile landscape: Smaller buttons
+        @media (max-width: $bootstrap-mobile-max) {
+            body.is-landscape & {
+                padding: 0.375rem 0.5rem; // Reduced padding
+                min-width: 40px; // Slightly smaller touch target
+                min-height: 40px;
+                
+                // Smaller icons
+                i {
+                    font-size: 1rem !important; // Reduced from fs-5
+                }
+            }
+        }
+        
+        // Inactive state: bg-light
+        &.bg-light {
+            background-color: var(--bs-light) !important;
+            color: var(--bs-dark) !important;
+            
+            &:hover {
+                background-color: rgba(var(--bs-light-rgb), 0.9);
+            }
+        }
+        
+        // Active state: bg-success
+        &.bg-success {
+            background-color: var(--bs-success) !important;
+            color: var(--bs-light) !important;
+        }
+        
+        // Icon styling
+        i {
+            display: block;
+            line-height: 1;
+            flex-shrink: 0; // Prevent icon from shrinking
+        }
+        
+        // Text styling (shown on desktop)
+        span {
+            white-space: nowrap; // Prevent text wrapping
+        }
+    }
+}
+
+// Channel sidebar toggle pill (mobile)
+.channel-sidebar-toggle-pill {
+    border: none !important;
+    border-radius: 50rem !important; // Fully rounded pill
+    transition: all 0.2s;
+    padding: 0.5rem 0.75rem; // Match filter pills padding for icon-only
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px; // Ensure minimum touch target size
+    min-height: 44px;
+    background-color: var(--bs-light) !important;
+    color: var(--bs-dark) !important;
+    
+    &:hover {
+        background-color: rgba(var(--bs-light-rgb), 0.9);
+    }
+    
+    // Icon styling to match filter pills
+    i {
+        display: block;
+        line-height: 1;
+    }
+    
+    // Mobile landscape: Styling handled by gallery-landscape-button class when inside gallery-landscape-controls
+    // No fixed positioning needed - positioned by parent container
+}
+
+// Legacy nav-pills styling (for other uses)
+.nav-pills .nav-link.active {
+    background-color: transparent;
+}
+.nav-pills .nav-link img {
+    border: 3px solid var(--bs-dark);
+    border-radius: 50%;
+    padding: 1rem;
+    background-color: var(--bs-light);
+    transition: all 0.5s;
+}
+.nav-pills .nav-link.active img,
+.nav-pills .nav-link:hover img {
+    border-color: var(--bs-success);
+}
+
+/* Playlist navigation chevrons - green on hover */
+#prevVideoBtn:hover i,
+#nextVideoBtn:hover i {
+    color: var(--bs-success) !important;
+}
+
+/* Smooth transition for chevrons */
+#prevVideoBtn i,
+#nextVideoBtn i {
+    transition: color 0.2s;
+}
+
+/* Gallery View Container */
+.gallery-view {
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    
+    // Mobile landscape: Reduced horizontal padding to maximize space
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            padding-left: 0.5rem !important; // Reduced from px-2 (0.5rem)
+            padding-right: 0.5rem !important;
+        }
+    }
+}
+
+/* Gallery Layout - Two Column with Sidebar */
+.gallery-layout {
+    display: flex;
+    height: calc(100vh - 80px); // Full height minus navbar
+    overflow: hidden; // Prevent outer scrolling
+    overflow-x: hidden; // Prevent horizontal scrollbar
+}
+
+.gallery-sidebar {
+    background-color: var(--bs-dark);
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    flex-shrink: 0;
+    
+    // Custom scrollbar styling (matching main scrollbar)
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: var(--bs-dark);
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background: rgba(var(--bs-light-rgb), 0.3);
+        border-radius: 4px;
+        
+        &:hover {
+            background: rgba(var(--bs-light-rgb), 0.5);
+        }
+    }
+    
+    // Firefox scrollbar styling
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--bs-light-rgb), 0.3) var(--bs-dark);
+}
+
+.gallery-main {
+    padding: 1rem;
+    padding-top: 0;
+    overflow: hidden; // Prevent outer scrolling
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative; // For landscape controls positioning
+    
+    // Mobile landscape: Reduced padding to maximize thumbnail space
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            padding: 0.5rem 0.75rem; // Reduced vertical and horizontal padding
+            padding-left: 3.5rem; // Make room for left-side controls
+        }
+    }
+}
+
+.gallery-header-container {
+    flex-shrink: 0; // Prevent header from shrinking
+    //padding-bottom: 1rem; // Add spacing between header and content
+    
+    // Mobile landscape: Hide header controls (moved to left side)
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            padding-bottom: 0.25rem; // Minimal spacing
+            
+            // Hide the left-side controls in header (they're now on the left side)
+            [data-layer="channel-header-left"] {
+                display: none !important;
+            }
+            
+            // Hide right-side controls in playlist view (back button and channel info moved to left)
+            &:has(.playlist-active) [data-layer="channel-header-right"] {
+                display: none !important;
+            }
+            
+            // Channel header: Minimal margin
+            [data-layer="channel-header"] {
+                margin-bottom: 0.25rem !important;
+            }
+            
+            // Hide playlist header container in landscape (elements positioned individually)
+            #playlistHeader {
+                display: none !important;
+            }
+        }
+    }
+}
+
+.gallery-content-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    min-height: 0; // Allow flex item to shrink below content size
+    
+    // Mobile landscape: Reduced padding to maximize thumbnail space
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            padding-right: 0.5rem !important; // Reduced from pe-3 (1rem)
+        }
+    }
+    
+    // Custom scrollbar styling (matching channel sidebar - light color)
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: var(--bs-dark);
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background: rgba(var(--bs-light-rgb), 0.3);
+        border-radius: 4px;
+        
+        &:hover {
+            background: rgba(var(--bs-light-rgb), 0.5);
+        }
+    }
+    
+    // Firefox scrollbar styling
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--bs-light-rgb), 0.3) var(--bs-dark);
+}
+
+// Landscape mode controls (positioned on left side)
+// Uses body.is-landscape class for visibility
+.gallery-landscape-controls {
+    // Hidden by default
+    display: none;
+    
+    // Mobile landscape: Show and position vertically on left
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            display: flex !important;
+            flex-direction: column;
+            position: fixed;
+            left: 0.5rem;
+            top: calc(80px + 1rem); // Navbar height + offset
+            z-index: 100;
+            gap: 0.5rem;
+            align-items: center;
+            
+            // Hide landscape back button by default (shown when playlist is active)
+            #playlistBackBtnLandscape {
+                display: none !important;
+                
+                // Show when playlist is active
+                &.playlist-active-landscape {
+                    display: flex !important;
+                }
+            }
+            
+            // Style filter pills container
+            #contentFilterPillsLandscape {
+                display: flex !important;
+                flex-direction: column;
+                gap: 0.5rem;
+                
+                // Ensure list items don't hide buttons
+                .nav-item {
+                    display: block !important;
+                    visibility: visible !important;
+                    
+                    .nav-link {
+                        // Make buttons circular like sidebar toggle
+                        border-radius: 50% !important;
+                        padding: 0.375rem !important;
+                        width: 40px !important;
+                        height: 40px !important;
+                        min-width: 40px !important;
+                        min-height: 40px !important;
+                        display: flex !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        align-items: center;
+                        justify-content: center;
+                        
+                        // Ensure both buttons are visible (not hidden)
+                        &.d-none {
+                            display: flex !important;
+                        }
+                        
+                        i {
+                            font-size: 1rem !important;
+                            line-height: 1;
+                            display: block;
+                        }
+                    }
+                }
+                
+                // Explicitly target both buttons by ID
+                #filterVideosBtnLandscape,
+                #filterPlaylistsBtnLandscape {
+                    display: flex !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    border-radius: 50% !important;
+                    padding: 0.375rem !important;
+                    width: 40px !important;
+                    height: 40px !important;
+                    min-width: 40px !important;
+                    min-height: 40px !important;
+                }
+            }
+        }
+    }
+}
+
+// Landscape button styling (applies to all buttons in landscape controls)
+.gallery-landscape-button {
+    // Mobile landscape: Circular buttons matching sidebar toggle style
+    @media (max-width: $bootstrap-mobile-max) {
+        body.is-landscape & {
+            border-radius: 50% !important;
+            padding: 0.375rem !important;
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            
+            i {
+                font-size: 1rem !important;
+                line-height: 1;
+                display: block;
+            }
+        }
+    }
+}
+
+/* Single column layout (no sidebar) */
+.gallery-layout-single {
+    display: flex;
+    height: calc(100vh - 80px); // Full height minus navbar
+    overflow: hidden; // Prevent outer scrolling
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    
+    .gallery-main {
+        width: 100%;
+    }
+}
+
+/* Channel Sidebar Styles */
+.channel-sidebar-list {
+    overflow-x: hidden; // Prevent horizontal scrollbar
+    
+    .nav-item {
+        margin-bottom: 0.25rem;
+    }
+    
+    .nav-link {
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+        
+        &:hover:not(.active) {
+            background-color: var(--bs-light);
+            color: var(--bs-success) !important;
+        }
+        
+        &.active {
+            background-color: var(--bs-light);
+            color: var(--bs-success) !important;
+            border-left: 3px solid var(--bs-success);
+            padding-left: calc(0.5rem - 3px);
+        }
+        
+        .badge {
+            font-size: 0.75rem;
+        }
+    }
+}
+
+/* Channel Sidebar Avatar and Icon Sizing */
+.channel-sidebar-avatar {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    
+    .user-avatar-circle {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        min-width: 2.5rem;
+        padding: 0 !important;
+        border-width: 1px !important;
+        
+        .user-avatar-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        // Icon sizing for "All Videos" icon
+        i {
+            font-size: 1.25rem !important; // Appropriate size for 2.5rem circle
+        }
+    }
+}
+
+.channel-sidebar-title {
+    font-size: 1rem;
+    line-height: 1rem;
+}
+
+/* Mobile Offcanvas Channel Sidebar */
+#channelSidebarOffcanvas {
+    // Custom scrollbar styling for offcanvas
+    .offcanvas-body {
+        overflow-y: auto;
+        overflow-x: hidden; // Prevent horizontal scrollbar
+        
+        &::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        &::-webkit-scrollbar-track {
+            background: var(--bs-dark);
+        }
+        
+        &::-webkit-scrollbar-thumb {
+            background: rgba(var(--bs-success-rgb), 0.3);
+            border-radius: 4px;
+            
+            &:hover {
+                background: rgba(var(--bs-success-rgb), 0.5);
+            }
+        }
+        
+        // Firefox scrollbar styling
+        scrollbar-width: thin;
+        scrollbar-color: rgba(var(--bs-success-rgb), 0.3) var(--bs-dark);
+        
+        .nav-link {
+            border-radius: 0;
+            transition: all 0.2s;
+            
+            &:hover:not(.active) {
+                background-color: var(--bs-light);
+                color: var(--bs-success) !important;
+            }
+            
+            &.active {
+                background-color: var(--bs-light);
+                color: var(--bs-success) !important;
+                border-left: 3px solid var(--bs-success);
+                padding-left: calc(1rem - 3px);
+            }
+        }
+    }
+}
+

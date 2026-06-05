@@ -1,0 +1,117 @@
+// Welcome Page Styles
+
+/* User Avatar Component - Circular tile components - shared styles */
+.user-avatar-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border-width: 3px !important;
+    padding: 0.5rem;
+}
+
+.user-avatar-circle-lg {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border-width: 3px !important;
+    padding: 0.5rem;
+}
+
+.user-avatar-circle-sm {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    border-radius: 50%;
+    border-width: 2px !important;
+    padding: 0;
+}
+
+/* Tile variant - interactive styles */
+.user-avatar-tile .user-avatar-circle,
+.user-avatar-tile .user-avatar-circle-lg,
+.user-avatar-tile .user-avatar-circle-sm {
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+.user-avatar-tile .user-avatar-circle:hover,
+.user-avatar-tile .user-avatar-circle-lg:hover,
+.user-avatar-tile .user-avatar-circle-sm:hover {
+    transform: scale(0.99);
+}
+
+/* Small variant hover - change border color to success */
+.user-avatar-tile .user-avatar-circle-sm:hover {
+    border-color: var(--bs-success) !important;
+}
+
+/* User avatar images */
+.user-avatar-image {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    object-position: center;
+}
+
+.user-avatar-image-sm {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    object-position: center;
+}
+
+/* Small variant icon sizing */
+.user-avatar-circle-sm i {
+    font-size: 1.25rem !important;
+}
+
+/* Legacy support - keep old classes for backward compatibility during transition */
+.user-tile-circle,
+.profile-header-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border-width: 3px !important;
+    padding: 0.5rem;
+}
+
+.user-tile-circle {
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+.user-tile-circle:hover {
+    transform: scale(0.99);
+}
+
+.user-tile-gif,
+.profile-header-image {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    object-position: center;
+}
+
+/* Content containers - shared styles */
+.welcome-content {
+    min-height: calc(100vh - 80px); /* Fill viewport for vertical centering, account for navbar */
+    display: flex;
+    align-items: center;
+    padding: 2rem 0;
+    
+    > .container {
+        width: 100%;
+    }
+}
+
+.empty-gallery-content {
+    min-height: calc(100vh - 80px); /* Fill viewport for vertical centering, account for navbar */
+    max-height: calc(100vh - 80px); /* Prevent exceeding viewport */
+    overflow-y: auto; /* Allow scrolling if content exceeds max-height */
+    padding: 2rem 0;
+}
+
+
+

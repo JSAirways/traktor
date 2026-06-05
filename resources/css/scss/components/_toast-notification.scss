@@ -1,0 +1,12 @@
+// Toast Notification Component Styles
+// Translucent notifications
+@use '../variables' as *;
+
+.toast.bg-success {
+    background-color: rgba(var(--bs-success-rgb), 0.85) !important;
+}
+
+.toast.bg-danger {
+    background-color: rgba(var(--bs-danger-rgb), 0.85) !important;
+}
+

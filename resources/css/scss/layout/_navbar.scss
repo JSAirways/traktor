@@ -1,0 +1,102 @@
+// Navbar Styles
+@use '../variables' as *;
+
+/* Gallery navbar - center slot for playlist navigation */
+.navbar.top-navbar .navbar-brand {
+    flex-shrink: 0;
+}
+
+.navbar.top-navbar .d-flex.flex-grow-1 {
+    min-width: 0; /* Allow center content to shrink */
+}
+
+.navbar.top-navbar h2 {
+    margin: 0;
+    line-height: 1;
+}
+
+
+/* Fixed navbar overlay in player view */
+.top-navbar.player-view-mode {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1003; /* Above control bar (1002) */
+    padding-top: 0.5rem;
+    padding-bottom: 2.5rem;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.85) 50%, rgba(0, 0, 0, 0) 100%);
+    pointer-events: none; /* Allow clicks through except on navbar elements */
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Hide navbar when hidden class is applied (fades out with control bar) */
+.top-navbar.player-view-mode.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Navbar container should have pointer events and gradient in player view */
+.navbar.top-navbar.player-view-mode > .container-fluid {
+    pointer-events: auto; /* Navbar buttons/links are clickable */
+    /* Padding is handled by parent navbar element, not container */
+}
+
+/* Ensure navbar works in fullscreen (when moved inside player-view) */
+.player-view:fullscreen > .top-navbar.player-view-mode,
+.player-view:-webkit-full-screen > .top-navbar.player-view-mode,
+.player-view:-moz-full-screen > .top-navbar.player-view-mode,
+.player-view:-ms-fullscreen > .top-navbar.player-view-mode {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1003; /* Above control bar (1002) */
+    pointer-events: none;
+    background: transparent;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.player-view:fullscreen > .navbar.top-navbar.player-view-mode > .container-fluid,
+.player-view:-webkit-full-screen > .navbar.top-navbar.player-view-mode > .container-fluid,
+.player-view:-moz-full-screen > .navbar.top-navbar.player-view-mode > .container-fluid,
+.player-view:-ms-fullscreen > .navbar.top-navbar.player-view-mode > .container-fluid {
+    pointer-events: auto;
+    /* Padding is handled by parent navbar element, not container */
+}
+
+/* Navbar profile picture button styling - using avatar component */
+.navbar-profile-picture-btn {
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    border: none !important;
+    
+    /* Remove button hover effects */
+    &:hover,
+    &:focus,
+    &:active {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        transform: none;
+    }
+    
+    /* Override user-avatar wrapper for navbar context */
+    > div {
+        margin-bottom: 0 !important;
+        text-align: center;
+    }
+}
+
+/* Add spacing between navbar action items */
+.navbar > .container-fluid > .d-flex.align-items-center,
+.navbar > .container-fluid > .d-flex.flex-grow-1 > .d-flex.align-items-center {
+    gap: 0.75rem; /* Space between nav items */
+}
+

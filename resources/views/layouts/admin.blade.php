@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - {{ $title ?? __('admin.dashboard') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- Author Information --}}
+    <meta name="author" content="Jonan Steiner">
+    <meta name="contact" content="jonan.steiner@gmail.com">
+    <link rel="author" href="https://jonan.space">
     
     {{-- Asset Version for Cache Invalidation --}}
     @php

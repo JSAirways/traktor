@@ -75,6 +75,13 @@ Key settings in `.env`:
 
 See `.env.example` for the full list. YouTube API credentials are configured through the admin settings panel after installation.
 
+## Author
+
+**Jonan Steiner**
+
+- Email: [jonan.steiner@gmail.com](mailto:jonan.steiner@gmail.com)
+- Website: [jonan.space](https://jonan.space)
+
 ## License
 
-This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](LICENSE).

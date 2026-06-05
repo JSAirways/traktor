@@ -15,6 +15,7 @@
         {{-- Author Information --}}
         <meta name="author" content="Jonan Steiner">
         <meta name="contact" content="jonan.steiner@gmail.com">
+        <link rel="author" href="https://jonan.space">
         
         {{-- Favicons and Icons --}}
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">

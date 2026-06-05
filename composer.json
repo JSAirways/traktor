@@ -5,6 +5,13 @@
     "description": "A curated video gallery platform for families, built with Laravel.",
     "keywords": ["laravel", "video", "youtube", "pwa", "family"],
     "license": "MIT",
+    "authors": [
+        {
+            "name": "Jonan Steiner",
+            "email": "jonan.steiner@gmail.com",
+            "homepage": "https://jonan.space"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "google/cloud-monitoring": "^2.2",

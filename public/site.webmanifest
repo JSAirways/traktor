@@ -9,6 +9,8 @@
   "theme_color": "#212529",
   "background_color": "#212529",
   "author": "Jonan Steiner",
+  "author_email": "jonan.steiner@gmail.com",
+  "author_url": "https://jonan.space",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

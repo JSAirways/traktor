@@ -24,6 +24,7 @@ Traktor is a curated video gallery platform where parents manage YouTube content
 - Composer
 - Node.js 18+ and npm
 - MySQL or PostgreSQL
+- **YouTube Data API v3 key** (required for importing videos, playlists, and channels)
 
 ## Getting Started
 
@@ -63,6 +64,33 @@ php artisan serve
 
 For asset hot-reloading during development, run `npm run dev` in a separate terminal.
 
+6. Configure your YouTube API key (see below).
+
+## YouTube API Key
+
+Traktor requires a **YouTube Data API v3** key to import and manage content from YouTube. Without it, channel imports, playlist imports, and video lookups will not work.
+
+### Obtaining a key
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project (or select an existing one)
+3. Enable the **YouTube Data API v3**
+4. Create an API key under **APIs & Services → Credentials**
+
+### Where to set it
+
+The API key is **not** stored in `.env`. After installation, set it in the admin panel:
+
+**Admin → Settings** (`/admin/settings`)
+
+Log in with an admin account, open Settings, paste your API key into the **YouTube API Key** field, and save.
+
+The key is stored in the database (`settings` table) and is required before importing any YouTube content.
+
+### Optional: quota monitoring
+
+The same settings page also supports optional Google Cloud credentials (Project ID and Service Account JSON) for monitoring your daily YouTube API quota usage.
+
 ## Environment Variables
 
 Key settings in `.env`:
@@ -73,7 +101,7 @@ Key settings in `.env`:
 | `DEVICE_TOKEN_TTL` | Device token lifetime in minutes |
 | `DEVICE_COOKIE_EXPIRATION` | Device cookie lifetime in minutes |
 
-See `.env.example` for the full list. YouTube API credentials are configured through the admin settings panel after installation.
+See `.env.example` for the full list.
 
 ## Author
 

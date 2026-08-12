@@ -61,6 +61,8 @@ class DashboardController extends Controller
         return view('admin.dashboard.user', [
             'authUser' => $authUser,
             'user' => $user,
+            'displayUser' => $user,
+            'availableUsers' => collect([$user]),
             'children' => $children,
         ]);
     }
@@ -196,20 +198,27 @@ class DashboardController extends Controller
             ]);
         }
 
+        $endWasClamped = false;
+        if ($endDate->gt(now()->startOfDay())) {
+            $endDate = now()->startOfDay();
+            $endWasClamped = true;
+        }
+
         if ($startDate->gt($endDate)) {
-            throw ValidationException::withMessages([
-                'start' => ['Start date must be on or before end date.'],
-            ]);
+            // Future ranges can invert after clamping end to today; collapse to today.
+            if ($endWasClamped) {
+                $startDate = $endDate->copy();
+            } else {
+                throw ValidationException::withMessages([
+                    'start' => ['Start date must be on or before end date.'],
+                ]);
+            }
         }
 
         if ($startDate->diffInDays($endDate) + 1 > self::MAX_RANGE_DAYS) {
             throw ValidationException::withMessages([
                 'start' => ['Date range cannot exceed ' . self::MAX_RANGE_DAYS . ' days.'],
             ]);
-        }
-
-        if ($endDate->gt(now()->startOfDay())) {
-            $endDate = now()->startOfDay();
         }
 
         return [$startDate, $endDate];

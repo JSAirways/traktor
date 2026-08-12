@@ -212,15 +212,20 @@ class AnalyticsService
         $rangeEnd = $endDate->copy()->endOfDay();
         $granularity = $this->resolveGranularity($rangeStart, $rangeEnd);
 
+        $rangeEvents = VideoWatchEvent::where('user_id', $user->id)
+            ->whereBetween('created_at', [$rangeStart, $rangeEnd])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         $sessions = $this->deriveSessionsFromEvents($user, $rangeStart, $rangeEnd);
-        $watchTime = (int) $sessions->sum(fn ($session) => $session['total_watch_time'] ?? 0);
+        // Max position per video across the whole range (not summed per session).
+        $watchTime = $this->calculateWatchTimeFromEvents($rangeEvents);
         $sessionCount = $sessions->count();
         $avgSessionLength = $sessionCount > 0
             ? (int) round($sessions->avg(fn ($session) => $session['total_watch_time'] ?? 0))
             : 0;
 
-        $videoStarts = VideoWatchEvent::where('user_id', $user->id)
-            ->whereBetween('created_at', [$rangeStart, $rangeEnd])
+        $videoStarts = $rangeEvents
             ->where('event_type', VideoWatchEvent::EVENT_STARTED)
             ->whereNotNull('video_id')
             ->count();

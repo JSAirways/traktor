@@ -1,353 +1,479 @@
 /**
  * Dashboard Module
- * Handles tab switching, data loading, and rendering
+ * Single-page analytics overview with shared date range
  */
 
 import { makeRequest } from '../../core/utils.js';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
 
 class Dashboard {
     constructor() {
         this.data = window.dashboardData || {};
-        this.activityData = null;
-        this.contentData = null;
-        this.currentPeriod = 'week';
-        this.currentOffset = 0;
+        this.i18n = this.data.i18n || {};
+        this.preset = '28';
+        this.startDate = null;
+        this.endDate = null;
+        this.loading = false;
+        this.flatpickr = null;
         this.init();
     }
 
     init() {
-        // Load activity data on page load
-        this.loadActivityData();
-
-        // Setup tab switching
-        this.setupTabs();
+        this.applyPreset(28, { reload: false });
+        this.setupRangeControls();
+        this.loadDashboard();
     }
 
-    setupTabs() {
-        const tabs = document.querySelectorAll('#dashboardTabs button[data-bs-toggle="tab"]');
-        tabs.forEach(tab => {
-            tab.addEventListener('shown.bs.tab', (e) => {
-                const targetId = e.target.getAttribute('data-bs-target');
-                
-                if (targetId === '#activity' && !this.activityData) {
-                    this.loadActivityData();
-                } else if (targetId === '#content' && !this.contentData) {
-                    this.loadContentData();
+    t(key, fallback = '') {
+        return this.i18n[key] || fallback;
+    }
+
+    formatDateParam(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    startOfDay(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    applyPreset(days, { reload = true } = {}) {
+        const end = this.startOfDay(new Date());
+        const start = this.startOfDay(new Date());
+        start.setDate(end.getDate() - (days - 1));
+        this.preset = String(days);
+        this.startDate = start;
+        this.endDate = end;
+        this.syncRangeUi();
+        if (reload) {
+            this.loadDashboard();
+        }
+    }
+
+    setupRangeControls() {
+        const pickerEl = document.getElementById('dashboardDateRangePicker');
+        const applyBtn = document.getElementById('dashboardDateRangeApply');
+        const previewEl = document.getElementById('dashboardDateRangePreview');
+        const modalEl = document.getElementById('dashboardDateRangeModal');
+
+        if (pickerEl) {
+            this.flatpickr = flatpickr(pickerEl, {
+                mode: 'range',
+                inline: true,
+                dateFormat: 'Y-m-d',
+                maxDate: 'today',
+                defaultDate: [this.startDate, this.endDate],
+                appendTo: pickerEl,
+                onChange: (selectedDates) => {
+                    const complete = selectedDates.length === 2;
+                    if (applyBtn) {
+                        applyBtn.disabled = !complete;
+                    }
+                    if (previewEl) {
+                        previewEl.textContent = complete
+                            ? this.formatRangeLabel(selectedDates[0], selectedDates[1])
+                            : '';
+                    }
+                },
+            });
+        }
+
+        applyBtn?.addEventListener('click', () => {
+            const selectedDates = this.flatpickr?.selectedDates || [];
+            if (selectedDates.length !== 2) {
+                return;
+            }
+            this.preset = 'custom';
+            this.startDate = this.startOfDay(selectedDates[0]);
+            this.endDate = this.startOfDay(selectedDates[1]);
+            this.syncRangeUi();
+            this.hideDateRangeModal();
+            this.loadDashboard();
+        });
+
+        modalEl?.addEventListener('shown.bs.modal', () => {
+            if (this.flatpickr && this.startDate && this.endDate) {
+                this.flatpickr.setDate([this.startDate, this.endDate], true);
+            }
+        });
+
+        document.querySelectorAll('.dashboard-range-preset').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (this.loading) {
+                    return;
                 }
+                const preset = button.dataset.preset;
+                if (preset === 'custom') {
+                    this.openDateRangeModal();
+                    return;
+                }
+                this.applyPreset(Number(preset));
             });
         });
     }
 
-    async loadActivityData() {
-        const container = document.getElementById('activityContent');
-        if (!container) return;
+    openDateRangeModal() {
+        const modalEl = document.getElementById('dashboardDateRangeModal');
+        if (!modalEl || !window.bootstrap?.Modal) {
+            return;
+        }
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
 
-        try {
-            const url = `${this.data.activityUrl}?slug=${encodeURIComponent(this.data.slug)}&period=${encodeURIComponent(this.currentPeriod)}&offset=${this.currentOffset}`;
-            const response = await makeRequest(url, {
-                method: 'GET',
-            });
+    hideDateRangeModal() {
+        const modalEl = document.getElementById('dashboardDateRangeModal');
+        if (!modalEl || !window.bootstrap?.Modal) {
+            return;
+        }
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
 
-            // makeRequest returns {data: {...}, headers: {...}, xhr: {...}}
-            // The actual server response is in response.data
-            const serverResponse = response?.data;
-            
-            if (serverResponse?.success && serverResponse?.data) {
-                this.activityData = serverResponse.data;
-                this.renderActivityOverview(container, serverResponse.data);
+    formatRangeLabel(start, end) {
+        const startLabel = this.startOfDay(start).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+        const endLabel = this.startOfDay(end).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+        return `${startLabel} – ${endLabel}`;
+    }
+
+    syncRangeUi() {
+        document.querySelectorAll('.dashboard-range-preset').forEach((button) => {
+            button.classList.toggle('active', button.dataset.preset === this.preset);
+        });
+
+        const labelEl = document.getElementById('dashboardCustomRangeLabel');
+        if (labelEl) {
+            if (this.preset === 'custom' && this.startDate && this.endDate) {
+                labelEl.textContent = this.formatRangeLabel(this.startDate, this.endDate);
+                labelEl.classList.remove('d-none');
             } else {
-                const errorMsg = serverResponse?.message || 'Failed to load activity data';
-                console.error('[Dashboard] Activity data response:', serverResponse);
-                this.renderError(container, errorMsg);
+                labelEl.textContent = '';
+                labelEl.classList.add('d-none');
             }
-        } catch (error) {
-            console.error('[Dashboard] Failed to load activity data:', error);
-            const errorMsg = error?.responseData?.message || error?.message || 'Error loading activity data';
-            this.renderError(container, errorMsg);
         }
     }
 
-    async loadContentData() {
-        const container = document.getElementById('contentContent');
-        if (!container) return;
-
-        try {
-            const url = `${this.data.contentUrl}?slug=${encodeURIComponent(this.data.slug)}`;
-            const response = await makeRequest(url, {
-                method: 'GET',
+    setLoading(isLoading) {
+        this.loading = isLoading;
+        const controls = document.getElementById('dashboardRangeControls');
+        if (controls) {
+            controls.querySelectorAll('button').forEach((el) => {
+                el.disabled = isLoading;
             });
-
-            // makeRequest returns {data: {...}, headers: {...}, xhr: {...}}
-            // The actual server response is in response.data
-            const serverResponse = response?.data;
-            
-            if (serverResponse?.success && serverResponse?.data) {
-                this.contentData = serverResponse.data;
-                this.renderContentInsights(container, serverResponse.data);
-            } else {
-                const errorMsg = serverResponse?.message || 'Failed to load content data';
-                console.error('[Dashboard] Content data response:', serverResponse);
-                this.renderError(container, errorMsg);
-            }
-        } catch (error) {
-            console.error('[Dashboard] Failed to load content data:', error);
-            const errorMsg = error?.responseData?.message || error?.message || 'Error loading content data';
-            this.renderError(container, errorMsg);
         }
     }
 
-    renderActivityOverview(container, data) {
-        const activity = data.activity;
-        const recentActivity = data.recent_activity || [];
-        const sessionStats = data.session_stats || {};
-        const periodMetadata = data.period_metadata || { has_previous: true, has_next: false };
-
+    showLoading() {
+        const container = document.getElementById('dashboardContent');
+        if (!container) {
+            return;
+        }
         container.innerHTML = `
-            <div class="dashboard-activity-overview">
-                <!-- Period Selector -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="mb-0 fw-bold">Period:</label>
-                                <div class="btn-group" role="group">
-                                    <input type="radio" class="btn-check" name="period" id="period-week" value="week" ${this.currentPeriod === 'week' ? 'checked' : ''}>
-                                    <label class="btn btn-outline-primary" for="period-week">Week</label>
-                                    
-                                    <input type="radio" class="btn-check" name="period" id="period-month" value="month" ${this.currentPeriod === 'month' ? 'checked' : ''}>
-                                    <label class="btn btn-outline-primary" for="period-month">Month</label>
-                                    
-                                    <input type="radio" class="btn-check" name="period" id="period-year" value="year" ${this.currentPeriod === 'year' ? 'checked' : ''}>
-                                    <label class="btn btn-outline-primary" for="period-year">Year</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn btn-outline-secondary" id="btn-previous-period" ${!periodMetadata.has_previous ? 'disabled' : ''}>
-                                    <span aria-hidden="true">&larr;</span> Previous
-                                </button>
-                                <span class="fw-bold" id="period-label">${activity.period_label || ''}</span>
-                                <button type="button" class="btn btn-outline-secondary" id="btn-next-period" ${!periodMetadata.has_next ? 'disabled' : ''}>
-                                    Next <span aria-hidden="true">&rarr;</span>
-                                </button>
-                                ${this.currentOffset !== 0 ? `<button type="button" class="btn btn-outline-primary btn-sm" id="btn-current-period">Current</button>` : ''}
-                            </div>
-                        </div>
-                    </div>
+            <div class="text-center py-5 dashboard-loading">
+                <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">${this.escapeHtml(this.t('loading'))}</span>
                 </div>
-
-                <!-- Quick Stats -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-2 text-muted">Today</h6>
-                                <h4 class="mb-0">${this.formatTime(activity.today?.watch_time || 0)}</h4>
-                                <small class="text-muted">${activity.today?.sessions || 0} sessions</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-2 text-muted">Selected Period</h6>
-                                <h4 class="mb-0">${this.formatTime(activity.period_stats?.watch_time || 0)}</h4>
-                                <small class="text-muted">${activity.period_stats?.sessions || 0} sessions</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-2 text-muted">Average</h6>
-                                <h4 class="mb-0">${this.formatTime(activity.average?.session_length || 0)}</h4>
-                                <small class="text-muted">per session</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Period Chart -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Watch Time - ${this.getPeriodChartTitle(activity.period)}</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="period-chart">
-                            ${this.renderPeriodChart(activity.period_data || [], activity.period)}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Peak Viewing Hours and Day Patterns -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Peak Viewing Times</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="peak-hours-chart">
-                                    ${this.renderPeakHours(activity.peak_hours || [])}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Most Active Days</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="day-patterns-chart">
-                                    ${this.renderDayPatterns(activity.day_of_week_patterns || {})}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Recent Activity</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="recent-activity-list">
-                            ${this.renderRecentActivity(recentActivity)}
-                        </div>
-                    </div>
-                </div>
+                <p class="mt-3 text-muted">${this.escapeHtml(this.t('loading'))}</p>
             </div>
         `;
     }
 
-    renderContentInsights(container, data) {
+    async loadDashboard() {
+        const container = document.getElementById('dashboardContent');
+        if (!container || !this.startDate || !this.endDate) {
+            return;
+        }
+
+        this.setLoading(true);
+        this.showLoading();
+
+        try {
+            const params = new URLSearchParams({
+                slug: this.data.slug || '',
+                start: this.formatDateParam(this.startDate),
+                end: this.formatDateParam(this.endDate),
+            });
+            const response = await makeRequest(`${this.data.dashboardUrl}?${params.toString()}`, {
+                method: 'GET',
+            });
+            const serverResponse = response?.data;
+
+            if (serverResponse?.success && serverResponse?.data) {
+                this.renderDashboard(container, serverResponse.data);
+            } else {
+                this.renderError(container, serverResponse?.message || this.t('loadError'));
+            }
+        } catch (error) {
+            console.error('[Dashboard] Failed to load data:', error);
+            this.renderError(
+                container,
+                error?.responseData?.message || error?.message || this.t('loadError')
+            );
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    renderDashboard(container, data) {
+        const range = data.range || {};
+        const kpis = data.kpis || {};
+        const granularityLabel = this.t(range.granularity || 'daily', range.granularity || 'daily');
+
         container.innerHTML = `
-            <div class="dashboard-content-insights">
-                <!-- Most Watched Videos -->
+            <div class="dashboard-overview">
+                <div class="row g-3 mb-4 dashboard-kpi-strip">
+                    ${this.renderKpiCard(this.t('watchTime'), this.formatTime(kpis.watch_time || 0))}
+                    ${this.renderKpiCard(this.t('sessions'), String(kpis.sessions || 0))}
+                    ${this.renderKpiCard(this.t('avgSession'), this.formatTime(kpis.avg_session_length || 0))}
+                    ${this.renderKpiCard(this.t('videoStarts'), String(kpis.video_starts || 0))}
+                </div>
+
                 <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Most Watched Videos</h5>
+                    <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1">
+                        <h5 class="mb-0">${this.escapeHtml(this.t('watchTimeOverTime'))}</h5>
+                        <small class="text-muted">${this.escapeHtml(range.label || '')} · ${this.escapeHtml(granularityLabel)}</small>
                     </div>
                     <div class="card-body">
-                        ${this.renderMostWatchedVideos(data.most_watched_videos || [])}
+                        ${this.renderWatchTimeChart(data.watch_time_series || [])}
                     </div>
                 </div>
 
-                <!-- Top Channels and Playlists -->
                 <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
                             <div class="card-header">
-                                <h5 class="mb-0">Top Channels</h5>
+                                <h5 class="mb-0">${this.escapeHtml(this.t('peakViewingTimes'))}</h5>
+                                ${this.renderPeakCallout(data.peak_hours || [])}
                             </div>
                             <div class="card-body">
+                                ${this.renderPeakHours(data.peak_hours || [])}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">${this.escapeHtml(this.t('mostActiveWeekdays'))}</h5>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderDayPatterns(data.day_of_week_patterns || {})}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <h4 class="h5 mb-3">${this.escapeHtml(this.t('whatTheyWatched'))}</h4>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">${this.escapeHtml(this.t('mostWatchedVideos'))}</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        ${this.renderRankedVideos(data.most_watched_videos || [])}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">${this.escapeHtml(this.t('topChannels'))}</h5>
+                            </div>
+                            <div class="card-body p-0">
                                 ${this.renderTopChannels(data.top_channels || [])}
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
                             <div class="card-header">
-                                <h5 class="mb-0">Most Watched Playlists</h5>
+                                <h5 class="mb-1">${this.escapeHtml(this.t('rewatchFavorites'))}</h5>
+                                <small class="text-muted">${this.escapeHtml(this.t('videosWatched5Plus'))}</small>
                             </div>
-                            <div class="card-body">
-                                ${this.renderMostWatchedPlaylists(data.most_watched_playlists || [])}
+                            <div class="card-body p-0">
+                                ${this.renderRankedVideos(data.rewatch_favorites || [])}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Re-watch Favorites -->
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0">Re-watch Favorites</h5>
-                        <small class="text-muted">Videos watched 5+ times</small>
+                        <h5 class="mb-0">${this.escapeHtml(this.t('recentActivity'))}</h5>
                     </div>
                     <div class="card-body">
-                        ${this.renderRewatchFavorites(data.rewatch_favorites || [])}
-                    </div>
-                </div>
-
-                <!-- Completion Rates -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Completion Rates</h5>
-                    </div>
-                    <div class="card-body">
-                        ${this.renderCompletionRates(data.completion_rates || {})}
+                        ${this.renderRecentActivity(data.recent_activity || [])}
                     </div>
                 </div>
             </div>
         `;
     }
 
-    renderPeriodChart(periodData, period) {
-        if (periodData.length === 0) {
-            return '<p class="text-muted">No data available</p>';
-        }
-
-        const maxTime = Math.max(...periodData.map(d => d.watch_time), 1);
-        
-        // For year view, use monthly bars; for week/month, use daily bars
-        const isYearly = period === 'year';
-        const barWidth = isYearly ? '8%' : 'auto';
-        const maxBarWidth = isYearly ? '80px' : '60px';
-        
+    renderKpiCard(label, value) {
         return `
-            <div class="period-chart-bars d-flex align-items-end gap-2" style="height: 200px; flex-wrap: ${isYearly ? 'wrap' : 'nowrap'};">
-                ${periodData.map(item => {
-                    const height = maxTime > 0 ? (item.watch_time / maxTime) * 100 : 0;
-                    const label = item.label || item.day || item.date;
-                    return `
-                        <div class="d-flex flex-column align-items-center" style="flex: ${isYearly ? '0 0 auto' : '1 1 0'}; min-width: ${isYearly ? '80px' : '0'};">
-                            <div class="bar-container flex-fill d-flex align-items-end w-100" style="max-width: ${maxBarWidth}; width: ${barWidth};">
-                                <div class="bar bg-success w-100 rounded-top" style="height: ${height}%; min-height: ${item.watch_time > 0 ? '4px' : '0'};" title="${this.formatTime(item.watch_time)}"></div>
-                            </div>
-                            <small class="mt-2 text-muted text-center" style="font-size: 0.75rem;">${label}</small>
-                        </div>
-                    `;
-                }).join('')}
+            <div class="col-6 col-lg-3">
+                <div class="card h-100 dashboard-kpi-card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">${this.escapeHtml(label)}</h6>
+                        <h3 class="mb-0">${this.escapeHtml(value)}</h3>
+                    </div>
+                </div>
             </div>
         `;
+    }
+
+    renderWatchTimeChart(series) {
+        if (!series.length) {
+            return `<p class="text-muted mb-0">${this.escapeHtml(this.t('noData'))}</p>`;
+        }
+
+        const maxTime = Math.max(...series.map((d) => d.watch_time), 0);
+        const midTime = Math.round(maxTime / 2);
+        const ticks = [maxTime, midTime, 0];
+
+        return `
+            <div class="axis-chart">
+                <div class="axis-chart-y" aria-hidden="true">
+                    ${ticks.map((tick) => `<span>${this.escapeHtml(this.formatTime(tick))}</span>`).join('')}
+                </div>
+                <div class="axis-chart-plot">
+                    <div class="axis-chart-grid" aria-hidden="true">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="axis-chart-bars">
+                        ${series.map((item) => {
+                            const height = maxTime > 0 ? (item.watch_time / maxTime) * 100 : 0;
+                            return `
+                                <div class="axis-chart-bar-col">
+                                    <div class="axis-chart-bar-track">
+                                        <div class="axis-chart-bar" style="height: ${height}%;" title="${this.escapeHtml(this.formatTime(item.watch_time))}"></div>
+                                    </div>
+                                    <small class="axis-chart-x-label">${this.escapeHtml(item.label || item.date || '')}</small>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderPeakCallout(hours) {
+        if (!hours.length || Math.max(...hours) <= 0) {
+            return '';
+        }
+        const peakHour = hours.indexOf(Math.max(...hours));
+        return `<small class="text-muted d-block mt-1">${this.escapeHtml(this.t('peak'))}: ${this.escapeHtml(this.formatHourRange(peakHour))}</small>`;
     }
 
     renderPeakHours(hours) {
-        if (hours.length === 0) {
-            return '<p class="text-muted">No data available</p>';
+        if (!hours.length || Math.max(...hours) <= 0) {
+            return `<p class="text-muted mb-0">${this.escapeHtml(this.t('noData'))}</p>`;
         }
 
-        const maxCount = Math.max(...hours, 1);
-        
+        const rawMax = Math.max(...hours);
+        const scaleMax = this.niceCountScaleMax(rawMax);
+        const yTicks = this.countAxisTicks(scaleMax);
+        const xLabels = [
+            { hour: 0, label: this.formatHourLabel(0) },
+            { hour: 6, label: this.formatHourLabel(6) },
+            { hour: 12, label: this.formatHourLabel(12) },
+            { hour: 18, label: this.formatHourLabel(18) },
+        ];
+
         return `
-            <div class="peak-hours-grid">
-                ${hours.map((count, hour) => {
-                    const intensity = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                    const opacity = Math.max(0.2, intensity / 100);
-                    return `
-                        <div class="hour-cell" style="opacity: ${opacity}; background-color: rgba(25, 135, 84, ${opacity});" title="Hour ${hour}: ${count} videos">
-                            ${hour}
+            <div class="peak-hours-chart">
+                <div class="peak-hours-body">
+                    <div class="peak-hours-y" aria-hidden="true">
+                        ${yTicks.map((tick) => `<span>${tick}</span>`).join('')}
+                    </div>
+                    <div class="peak-hours-plot">
+                        <div class="peak-hours-grid" aria-hidden="true">
+                            ${yTicks.map(() => '<span></span>').join('')}
                         </div>
-                    `;
-                }).join('')}
+                        <div class="peak-hours-bars">
+                            ${hours.map((count, hour) => {
+                                const height = scaleMax > 0 ? (count / scaleMax) * 100 : 0;
+                                const title = `${this.formatHourRange(hour)} · ${count} ${this.t('starts')}`;
+                                return `
+                                    <div class="peak-hours-bar-col" title="${this.escapeHtml(title)}">
+                                        <div class="peak-hours-bar" style="height: ${height}%;"></div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="peak-hours-x" aria-hidden="true">
+                    ${xLabels.map((item) => `
+                        <span style="left: ${(item.hour / 24) * 100}%;">${this.escapeHtml(item.label)}</span>
+                    `).join('')}
+                </div>
+                <div class="peak-hours-unit text-muted">${this.escapeHtml(this.t('starts'))}</div>
             </div>
         `;
+    }
+
+    /**
+     * Round a count scale up so top tick is a clean integer.
+     */
+    niceCountScaleMax(max) {
+        if (max <= 1) return 1;
+        if (max <= 2) return 2;
+        if (max <= 4) return 4;
+        if (max <= 5) return 5;
+        if (max <= 10) return 10;
+        return Math.ceil(max / 5) * 5;
+    }
+
+    /**
+     * Integer Y-axis ticks from scale max down to 0 (no duplicates).
+     */
+    countAxisTicks(scaleMax) {
+        if (scaleMax <= 1) {
+            return [1, 0];
+        }
+        if (scaleMax === 2) {
+            return [2, 1, 0];
+        }
+        if (scaleMax <= 5) {
+            return [scaleMax, Math.round(scaleMax / 2), 0];
+        }
+        return [scaleMax, Math.round(scaleMax / 2), 0];
     }
 
     renderDayPatterns(patterns) {
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        const maxTime = Math.max(...Object.values(patterns), 1);
-        
+        const values = days.map((day) => patterns[day] || 0);
+        if (Math.max(...values) <= 0) {
+            return `<p class="text-muted mb-0">${this.escapeHtml(this.t('noData'))}</p>`;
+        }
+
+        const maxTime = Math.max(...values, 1);
+
         return `
             <div class="day-patterns-bars">
-                ${days.map(day => {
+                ${days.map((day) => {
                     const time = patterns[day] || 0;
                     const width = maxTime > 0 ? (time / maxTime) * 100 : 0;
                     return `
                         <div class="mb-2">
                             <div class="d-flex justify-content-between mb-1">
-                                <small>${day.substring(0, 3)}</small>
-                                <small class="text-muted">${this.formatTime(time)}</small>
+                                <small>${this.escapeHtml(day.substring(0, 3))}</small>
+                                <small class="text-muted">${this.escapeHtml(this.formatTime(time))}</small>
                             </div>
                             <div class="progress" style="height: 20px;">
                                 <div class="progress-bar bg-success" role="progressbar" style="width: ${width}%;" aria-valuenow="${width}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -359,57 +485,30 @@ class Dashboard {
         `;
     }
 
-    renderRecentActivity(activities) {
-        if (activities.length === 0) {
-            return '<p class="text-muted">No recent activity</p>';
+    renderRankedVideos(items) {
+        if (!items.length) {
+            return `<p class="text-muted p-3 mb-0">${this.escapeHtml(this.t('noData'))}</p>`;
         }
 
         return `
-            <div class="list-group">
-                ${activities.map(activity => {
-                    const eventType = activity.event_type === 'started' ? 'Started watching' : activity.event_type === 'completed' ? 'Completed' : activity.event_type;
-                    const videoTitle = activity.video?.title || 'Unknown video';
-                    const deviceName = activity.device_name ? ` on ${activity.device_name}` : '';
-                    const date = new Date(activity.created_at);
-                    return `
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <h6 class="mb-1">${eventType}: ${videoTitle}</h6>
-                                    <small class="text-muted">${deviceName}</small>
-                                </div>
-                                <small class="text-muted">${this.formatDate(date)}</small>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }
+            <div class="list-group list-group-flush ranked-content-list">
+                ${items.map((item, index) => {
+                    const video = item.video || {};
+                    const meta = [
+                        `${this.t('watched')} ${item.watch_count || 0} ${this.t('times')}`,
+                        item.total_watch_time != null ? `${this.formatTime(item.total_watch_time)} ${this.t('total')}` : null,
+                    ].filter(Boolean).join(' · ');
 
-    renderMostWatchedVideos(videos) {
-        if (videos.length === 0) {
-            return '<p class="text-muted">No videos watched yet</p>';
-        }
-
-        return `
-            <div class="list-group">
-                ${videos.map((item, index) => {
-                    const video = item.video;
                     return `
                         <div class="list-group-item">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="flex-shrink-0">
-                                    <span class="badge bg-success">${index + 1}</span>
-                                </div>
-                                ${video.thumbnail_url ? `<img src="${video.thumbnail_url}" alt="${video.title}" class="rounded" style="width: 80px; height: 60px; object-fit: cover;">` : ''}
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">${video.title}</h6>
-                                    <small class="text-muted">
-                                        Watched ${item.watch_count} times • 
-                                        ${this.formatTime(item.total_watch_time)} total • 
-                                        ${item.avg_completion}% avg completion
-                                    </small>
+                                <span class="badge bg-success">${index + 1}</span>
+                                ${video.thumbnail_url
+                                    ? `<img src="${this.escapeHtml(video.thumbnail_url)}" alt="" class="rounded ranked-thumb">`
+                                    : '<div class="rounded ranked-thumb ranked-thumb-placeholder"></div>'}
+                                <div class="flex-grow-1 min-w-0">
+                                    <h6 class="mb-1 text-truncate">${this.escapeHtml(video.title || 'Unknown video')}</h6>
+                                    <small class="text-muted">${this.escapeHtml(meta)}</small>
                                 </div>
                             </div>
                         </div>
@@ -420,18 +519,23 @@ class Dashboard {
     }
 
     renderTopChannels(channels) {
-        if (channels.length === 0) {
-            return '<p class="text-muted">No channel data available</p>';
+        if (!channels.length) {
+            return `<p class="text-muted p-3 mb-0">${this.escapeHtml(this.t('noData'))}</p>`;
         }
 
         return `
-            <div class="list-group">
+            <div class="list-group list-group-flush ranked-content-list">
                 ${channels.map((channel, index) => `
                     <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">${index + 1}. ${channel.channel_name}</h6>
-                                <small class="text-muted">${channel.watch_count} videos • ${this.formatTime(channel.watch_time)}</small>
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div class="min-w-0">
+                                <h6 class="mb-1 text-truncate">
+                                    <span class="badge bg-success me-2">${index + 1}</span>
+                                    ${this.escapeHtml(channel.channel_name || 'Unknown channel')}
+                                </h6>
+                                <small class="text-muted">
+                                    ${channel.watch_count || 0} ${this.escapeHtml(this.t('videos'))} · ${this.escapeHtml(this.formatTime(channel.watch_time || 0))}
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -440,101 +544,35 @@ class Dashboard {
         `;
     }
 
-    renderMostWatchedPlaylists(playlists) {
-        if (playlists.length === 0) {
-            return '<p class="text-muted">No playlist data available</p>';
+    renderRecentActivity(activities) {
+        if (!activities.length) {
+            return `<p class="text-muted mb-0">${this.escapeHtml(this.t('noRecentActivity'))}</p>`;
         }
 
         return `
-            <div class="list-group">
-                ${playlists.map((item, index) => {
-                    const playlist = item.playlist;
+            <div class="list-group list-group-flush">
+                ${activities.map((activity) => {
+                    const eventType = activity.event_type === 'started'
+                        ? this.t('startedWatching')
+                        : activity.event_type === 'completed'
+                            ? this.t('completed')
+                            : activity.event_type;
+                    const videoTitle = activity.video?.title || 'Unknown video';
+                    const deviceName = activity.device_name ? ` · ${activity.device_name}` : '';
+                    const date = new Date(activity.created_at);
+
                     return `
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">${index + 1}. ${playlist.title}</h6>
-                                    <small class="text-muted">
-                                        ${item.videos_watched} videos • 
-                                        ${item.total_starts} starts • 
-                                        ${item.avg_videos_per_session} avg per session
-                                    </small>
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div class="min-w-0">
+                                    <h6 class="mb-1 text-truncate">${this.escapeHtml(eventType)}: ${this.escapeHtml(videoTitle)}</h6>
+                                    <small class="text-muted">${this.escapeHtml(deviceName.trim())}</small>
                                 </div>
+                                <small class="text-muted text-nowrap">${this.escapeHtml(this.formatDate(date))}</small>
                             </div>
                         </div>
                     `;
                 }).join('')}
-            </div>
-        `;
-    }
-
-    renderRewatchFavorites(videos) {
-        if (videos.length === 0) {
-            return '<p class="text-muted">No re-watch favorites yet</p>';
-        }
-
-        return `
-            <div class="row g-3">
-                ${videos.map(item => {
-                    const video = item.video;
-                    return `
-                        <div class="col-md-3 col-sm-4 col-6">
-                            <div class="card">
-                                ${video.thumbnail_url ? `<img src="${video.thumbnail_url}" class="card-img-top" alt="${video.title}" style="height: 120px; object-fit: cover;">` : ''}
-                                <div class="card-body p-2">
-                                    <h6 class="card-title small mb-1" style="font-size: 0.85rem;">${video.title}</h6>
-                                    <span class="badge bg-success">${item.watch_count}x</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }
-
-    renderCompletionRates(rates) {
-        const total = rates.total_started || 0;
-        const completed = rates.fully_watched || 0;
-        const partial = rates.partially_watched || 0;
-        const completionRate = rates.completion_rate || 0;
-
-        return `
-            <div class="completion-stats">
-                <div class="mb-3">
-                    <h6>Overall Completion Rate: ${completionRate}%</h6>
-                    <div class="progress" style="height: 30px;">
-                        <div class="progress-bar" role="progressbar" style="width: ${completionRate}%;" aria-valuenow="${completionRate}" aria-valuemin="0" aria-valuemax="100">
-                            ${completionRate}%
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h4 class="mb-0">${total}</h4>
-                                <small class="text-muted">Total Started</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h4 class="mb-0">${completed}</h4>
-                                <small class="text-muted">Fully Watched</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h4 class="mb-0">${partial}</h4>
-                                <small class="text-muted">Partially Watched</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         `;
     }
@@ -542,13 +580,28 @@ class Dashboard {
     renderError(container, message) {
         container.innerHTML = `
             <div class="alert alert-danger" role="alert">
-                ${message}
+                ${this.escapeHtml(message)}
             </div>
         `;
     }
 
+    formatHourLabel(hour) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const display = hour % 12 === 0 ? 12 : hour % 12;
+        return `${display} ${period}`;
+    }
+
+    formatHourRange(hour) {
+        const start = this.formatHourLabel(hour);
+        const endHour = (hour + 1) % 24;
+        const end = this.formatHourLabel(endHour);
+        return `${start} – ${end}`;
+    }
+
     formatTime(seconds) {
-        if (!seconds || seconds === 0) return '0m';
+        if (!seconds || seconds === 0) {
+            return '0m';
+        }
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         if (hours > 0) {
@@ -570,9 +623,17 @@ class Dashboard {
         if (days < 7) return `${days}d ago`;
         return date.toLocaleDateString();
     }
+
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 }
 
-// Initialize dashboard when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         new Dashboard();
@@ -580,4 +641,3 @@ if (document.readyState === 'loading') {
 } else {
     new Dashboard();
 }
-

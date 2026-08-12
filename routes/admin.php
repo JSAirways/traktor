@@ -10,8 +10,7 @@ Route::middleware(['auth', 'account.approved'])->prefix('admin')->name('admin.')
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/dashboard/user/{user}', [App\Http\Controllers\Admin\DashboardController::class, 'showUser'])->name('dashboard.user');
     Route::get('/dashboard/users', [App\Http\Controllers\Admin\DashboardController::class, 'users'])->name('dashboard.users');
-    Route::get('/api/dashboard/activity', [App\Http\Controllers\Admin\DashboardController::class, 'getActivityData'])->name('dashboard.activity');
-    Route::get('/api/dashboard/content', [App\Http\Controllers\Admin\DashboardController::class, 'getContentData'])->name('dashboard.content');
+    Route::get('/api/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'getDashboardData'])->name('dashboard.data');
     
     // User Management (Admin only - authorization checked in controller)
     Route::resource('users', App\Http\Controllers\Admin\UserController::class);

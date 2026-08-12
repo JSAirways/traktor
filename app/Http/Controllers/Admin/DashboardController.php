@@ -7,11 +7,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AnalyticsService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
 {
+    private const MAX_RANGE_DAYS = 365;
+
     public function __construct(
         protected AnalyticsService $analyticsService
     ) {
@@ -24,16 +28,14 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         $selectedSlug = $request->get('slug');
-        
-        // Get user to display analytics for
+
         $displayUser = $this->getDisplayUser($user, $selectedSlug);
-        
+
         if (!$displayUser) {
             return redirect()->route('admin.dashboard')
                 ->with('error', __('messages.user_not_found'));
         }
 
-        // Get available users for selector (children for parents, all users for admins)
         $availableUsers = $this->getAvailableUsers($user);
 
         return view('admin.dashboard.index', [
@@ -45,19 +47,15 @@ class DashboardController extends Controller
 
     /**
      * Show dashboard for a specific user (admin only).
-     * Authorization: Only admins can view other users' dashboards.
-     * Parents can view their own and their children's dashboards via index() method.
      */
     public function showUser(User $user)
     {
         $authUser = auth()->user();
-        
-        // Only admins can view other users' dashboards
+
         if (!$authUser->isAdmin()) {
             abort(403);
         }
 
-        // Get children if this is a parent
         $children = $user->children()->where('is_viewable', true)->get();
 
         return view('admin.dashboard.user', [
@@ -69,18 +67,15 @@ class DashboardController extends Controller
 
     /**
      * Get user list for admin dashboard.
-     * Authorization: Only admins can view the user list.
      */
     public function users()
     {
         $authUser = auth()->user();
-        
-        // Only admins can view user list
+
         if (!$authUser->isAdmin()) {
             abort(403);
         }
 
-        // Get all users grouped by parent
         $parents = User::where('role', 'user')
             ->whereNull('parent_id')
             ->with(['children' => function ($query) {
@@ -95,45 +90,58 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get activity overview data (AJAX).
+     * Get unified dashboard analytics data (AJAX).
      */
-    public function getActivityData(Request $request): JsonResponse
+    public function getDashboardData(Request $request): JsonResponse
     {
         try {
             $user = auth()->user();
             $selectedSlug = $request->get('slug');
-            
+
             $displayUser = $this->getDisplayUser($user, $selectedSlug);
-            
+
             if (!$displayUser) {
                 return response()->error(__('messages.user_not_found'), null, 404);
             }
 
-            // Get period and offset parameters
-            $period = $request->get('period', 'week');
-            $offset = (int) $request->get('offset', 0);
-
-            // Validate period
-            if (!in_array($period, ['week', 'month', 'year'], true)) {
-                $period = 'week';
-            }
-
-            // Validate offset (limit to reasonable range: -100 to 0)
-            $offset = max(-100, min(0, $offset));
-
-            $activityData = $this->analyticsService->getActivityOverview($displayUser, $period, $offset);
-            $recentActivity = $this->analyticsService->getRecentActivity($displayUser, 10);
-            $sessionStats = $this->analyticsService->getSessionStats($displayUser);
-
-            // Determine if there's previous/next period available
-            // For now, we'll allow navigation back up to 90 days (retention period)
-            // Offset 0 means current period, so we can't go forward
-            $hasPrevious = true; // Can always go back (limited by retention)
-            $hasNext = $offset < 0; // Can go forward if not at current period
+            [$startDate, $endDate] = $this->resolveDateRange($request);
+            $dashboard = $this->analyticsService->getDashboardData($displayUser, $startDate, $endDate);
 
             return response()->success(__('messages.analytics_data_loaded'), [
-                'activity' => $activityData,
-                'recent_activity' => $recentActivity->map(function ($event) {
+                'range' => $dashboard['range'],
+                'kpis' => $dashboard['kpis'],
+                'watch_time_series' => $dashboard['watch_time_series'],
+                'peak_hours' => $dashboard['peak_hours'],
+                'day_of_week_patterns' => $dashboard['day_of_week_patterns'],
+                'most_watched_videos' => $dashboard['most_watched_videos']->map(function ($item) {
+                    $video = $item['video'] ?? null;
+
+                    return [
+                        'video' => $video ? [
+                            'id' => $video->id,
+                            'title' => $video->title,
+                            'thumbnail_url' => $video->thumbnail_url,
+                            'duration' => $video->duration,
+                        ] : null,
+                        'watch_count' => $item['watch_count'] ?? 0,
+                        'total_watch_time' => $item['total_watch_time'] ?? 0,
+                    ];
+                }),
+                'top_channels' => $dashboard['top_channels'],
+                'rewatch_favorites' => $dashboard['rewatch_favorites']->map(function ($item) {
+                    $video = $item['video'] ?? null;
+
+                    return [
+                        'video' => $video ? [
+                            'id' => $video->id,
+                            'title' => $video->title,
+                            'thumbnail_url' => $video->thumbnail_url,
+                        ] : null,
+                        'watch_count' => $item['watch_count'] ?? 0,
+                        'total_watch_time' => $item['total_watch_time'] ?? 0,
+                    ];
+                }),
+                'recent_activity' => $dashboard['recent_activity']->map(function ($event) {
                     return [
                         'id' => $event->id,
                         'event_type' => $event->event_type,
@@ -150,85 +158,61 @@ class DashboardController extends Controller
                         'device_name' => $event->deviceRegistration?->device_name ?? null,
                     ];
                 }),
-                'session_stats' => $sessionStats,
-                'period_metadata' => [
-                    'has_previous' => $hasPrevious,
-                    'has_next' => $hasNext,
-                ],
             ]);
+        } catch (ValidationException $e) {
+            return response()->error($e->getMessage(), $e->errors(), 422);
         } catch (\Exception $e) {
-            \Log::error('Dashboard activity data error: ' . $e->getMessage(), [
+            \Log::error('Dashboard data error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->error('Failed to load activity data: ' . $e->getMessage(), null, 500);
+
+            return response()->error('Failed to load dashboard data: ' . $e->getMessage(), null, 500);
         }
     }
 
     /**
-     * Get content insights data (AJAX).
+     * Resolve and validate start/end date range from the request.
+     *
+     * @return array{0: Carbon, 1: Carbon}
      */
-    public function getContentData(Request $request): JsonResponse
+    private function resolveDateRange(Request $request): array
     {
+        $defaultEnd = now()->startOfDay();
+        $defaultStart = $defaultEnd->copy()->subDays(27);
+
+        $startInput = $request->get('start');
+        $endInput = $request->get('end');
+
         try {
-            $user = auth()->user();
-            $selectedSlug = $request->get('slug');
-            
-            $displayUser = $this->getDisplayUser($user, $selectedSlug);
-            
-            if (!$displayUser) {
-                return response()->error(__('messages.user_not_found'), null, 404);
-            }
-
-            $contentData = $this->analyticsService->getContentInsights($displayUser);
-
-            return response()->success(__('messages.analytics_data_loaded'), [
-                'most_watched_videos' => $contentData['most_watched_videos']->map(function ($item) {
-                    $video = $item['video'] ?? null;
-                    return [
-                        'video' => $video ? [
-                            'id' => $video->id,
-                            'title' => $video->title,
-                            'thumbnail_url' => $video->thumbnail_url,
-                            'duration' => $video->duration,
-                        ] : null,
-                        'watch_count' => $item['watch_count'] ?? 0,
-                        'total_watch_time' => $item['total_watch_time'] ?? 0,
-                        'avg_completion' => $item['avg_completion'] ?? 0,
-                    ];
-                }),
-                'top_channels' => $contentData['top_channels'],
-                'most_watched_playlists' => $contentData['most_watched_playlists']->map(function ($item) {
-                    $playlist = $item['playlist'] ?? null;
-                    return [
-                        'playlist' => $playlist ? [
-                            'id' => $playlist->id,
-                            'title' => $playlist->title,
-                            'thumbnail_url' => $playlist->thumbnail_url,
-                        ] : null,
-                        'videos_watched' => $item['videos_watched'] ?? 0,
-                        'total_starts' => $item['total_starts'] ?? 0,
-                        'avg_videos_per_session' => $item['avg_videos_per_session'] ?? 0,
-                    ];
-                }),
-                'rewatch_favorites' => $contentData['rewatch_favorites']->map(function ($item) {
-                    $video = $item['video'] ?? null;
-                    return [
-                        'video' => $video ? [
-                            'id' => $video->id,
-                            'title' => $video->title,
-                            'thumbnail_url' => $video->thumbnail_url,
-                        ] : null,
-                        'watch_count' => $item['watch_count'] ?? 0,
-                    ];
-                }),
-                'completion_rates' => $contentData['completion_rates'],
-            ]);
+            $startDate = $startInput
+                ? Carbon::createFromFormat('Y-m-d', $startInput)->startOfDay()
+                : $defaultStart;
+            $endDate = $endInput
+                ? Carbon::createFromFormat('Y-m-d', $endInput)->startOfDay()
+                : $defaultEnd;
         } catch (\Exception $e) {
-            \Log::error('Dashboard content data error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            throw ValidationException::withMessages([
+                'start' => ['Invalid date format. Use Y-m-d.'],
             ]);
-            return response()->error('Failed to load content data: ' . $e->getMessage(), null, 500);
         }
+
+        if ($startDate->gt($endDate)) {
+            throw ValidationException::withMessages([
+                'start' => ['Start date must be on or before end date.'],
+            ]);
+        }
+
+        if ($startDate->diffInDays($endDate) + 1 > self::MAX_RANGE_DAYS) {
+            throw ValidationException::withMessages([
+                'start' => ['Date range cannot exceed ' . self::MAX_RANGE_DAYS . ' days.'],
+            ]);
+        }
+
+        if ($endDate->gt(now()->startOfDay())) {
+            $endDate = now()->startOfDay();
+        }
+
+        return [$startDate, $endDate];
     }
 
     /**
@@ -236,17 +220,15 @@ class DashboardController extends Controller
      */
     private function getDisplayUser(User $authUser, ?string $selectedSlug): ?User
     {
-        // If slug provided, find that user
         if ($selectedSlug) {
             $selectedUser = User::where('slug', $selectedSlug)
                 ->where('is_viewable', true)
                 ->first();
-            
+
             if (!$selectedUser) {
                 return null;
             }
 
-            // Check if auth user can view this user's analytics
             if ($authUser->isAdmin() || $authUser->id === $selectedUser->id || $selectedUser->parent_id === $authUser->id) {
                 return $selectedUser;
             }
@@ -254,44 +236,22 @@ class DashboardController extends Controller
             return null;
         }
 
-        // No slug provided - show auth user's own analytics
         return $authUser;
     }
 
     /**
      * Get available users for selector.
      */
-    private function getAvailableUsers(User $authUser): array
+    private function getAvailableUsers(User $authUser)
     {
         if ($authUser->isAdmin()) {
-            // Admins see all users
             return User::where('is_viewable', true)
                 ->orderBy('username')
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'slug' => $user->slug,
-                        'username' => $user->username,
-                        'role' => $user->role,
-                        'parent_id' => $user->parent_id,
-                    ];
-                })
-                ->toArray();
+                ->get();
         }
 
-        // Parents see themselves and their children
-        $users = collect([$authUser]);
-        $users = $users->merge($authUser->children()->where('is_viewable', true)->get());
-
-        return $users->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'slug' => $user->slug,
-                'username' => $user->username,
-                'role' => $user->role,
-                'parent_id' => $user->parent_id,
-            ];
-        })->toArray();
+        return collect([$authUser])
+            ->merge($authUser->children()->where('is_viewable', true)->orderBy('username')->get())
+            ->values();
     }
 }

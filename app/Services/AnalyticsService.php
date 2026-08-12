@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\DeviceRegistration;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoWatchEvent;
-use App\Models\WatchSession;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class AnalyticsService
 {
-    private const DEFAULT_RETENTION_DAYS = 90;
     private const SESSION_GAP_MINUTES = 30;
     private const MATCHING_WINDOW_HOURS = 2;
 
@@ -207,103 +204,57 @@ class AnalyticsService
     }
 
     /**
-     * Get activity overview metrics.
-     * 
-     * @param User $user
-     * @param string $period Period type: 'week', 'month', or 'year'
-     * @param int $offset Offset from current period (0 = current, -1 = previous, etc.)
-     * @param int $days Retention days for average calculation (default: 90)
-     * @return array
+     * Get full dashboard analytics for a date range.
      */
-    public function getActivityOverview(User $user, string $period = 'week', int $offset = 0, int $days = self::DEFAULT_RETENTION_DAYS): array
+    public function getDashboardData(User $user, Carbon $startDate, Carbon $endDate): array
     {
-        // Calculate period dates
-        [$periodStart, $periodEnd] = $this->calculatePeriodDates($period, $offset);
-        
-        // Get stats for the selected period
-        $periodStats = $this->getTimeStatsForPeriod($user, $periodStart, $periodEnd);
+        $rangeStart = $startDate->copy()->startOfDay();
+        $rangeEnd = $endDate->copy()->endOfDay();
+        $granularity = $this->resolveGranularity($rangeStart, $rangeEnd);
 
-        // Today's stats (always current day)
-        $todayStart = now()->startOfDay();
-        $todayStats = $this->getTimeStatsForPeriod($user, $todayStart, now());
+        $sessions = $this->deriveSessionsFromEvents($user, $rangeStart, $rangeEnd);
+        $watchTime = (int) $sessions->sum(fn ($session) => $session['total_watch_time'] ?? 0);
+        $sessionCount = $sessions->count();
+        $avgSessionLength = $sessionCount > 0
+            ? (int) round($sessions->avg(fn ($session) => $session['total_watch_time'] ?? 0))
+            : 0;
 
-        // Average session length (derived from events within retention period)
-        $retentionStart = now()->subDays($days);
-        $sessions = $this->deriveSessionsFromEvents($user, $retentionStart, now());
-        $avgSessionLength = $sessions->avg(function ($session) {
-            return $session['total_watch_time'] ?? 0;
-        }) ?? 0;
-
-        // Period watch time data
-        $periodData = $this->getPeriodWatchTime($user, $period, $periodStart, $periodEnd);
-
-        // Peak viewing hours (hourly distribution for selected period)
-        $peakHours = $this->getPeakViewingHours($user, $periodStart, $periodEnd);
-
-        // Day of week patterns (for selected period)
-        $dayOfWeekPatterns = $this->getDayOfWeekPatterns($user, $periodStart, $periodEnd);
-
-        // Calculate period label
-        $periodLabel = $this->formatPeriodLabel($period, $periodStart, $periodEnd);
+        $videoStarts = VideoWatchEvent::where('user_id', $user->id)
+            ->whereBetween('created_at', [$rangeStart, $rangeEnd])
+            ->where('event_type', VideoWatchEvent::EVENT_STARTED)
+            ->whereNotNull('video_id')
+            ->count();
 
         return [
-            'period' => $period,
-            'offset' => $offset,
-            'period_label' => $periodLabel,
-            'period_start' => $periodStart->toIso8601String(),
-            'period_end' => $periodEnd->toIso8601String(),
-            'today' => [
-                'watch_time' => $todayStats['watch_time'],
-                'sessions' => $todayStats['sessions'],
+            'range' => [
+                'start' => $rangeStart->toDateString(),
+                'end' => $rangeEnd->toDateString(),
+                'label' => $this->formatRangeLabel($rangeStart, $rangeEnd),
+                'granularity' => $granularity,
             ],
-            'period_stats' => [
-                'watch_time' => $periodStats['watch_time'],
-                'sessions' => $periodStats['sessions'],
+            'kpis' => [
+                'watch_time' => $watchTime,
+                'sessions' => $sessionCount,
+                'avg_session_length' => $avgSessionLength,
+                'video_starts' => $videoStarts,
             ],
-            'average' => [
-                'session_length' => (int) round($avgSessionLength),
-            ],
-            'period_data' => $periodData,
-            'peak_hours' => $peakHours,
-            'day_of_week_patterns' => $dayOfWeekPatterns,
+            'watch_time_series' => $this->getWatchTimeSeries($user, $rangeStart, $rangeEnd, $granularity),
+            'peak_hours' => $this->getPeakViewingHours($user, $rangeStart, $rangeEnd),
+            'day_of_week_patterns' => $this->getDayOfWeekPatterns($user, $rangeStart, $rangeEnd),
+            'most_watched_videos' => $this->getMostWatchedVideos($user, $rangeStart, $rangeEnd, 5),
+            'top_channels' => $this->getTopChannels($user, $rangeStart, $rangeEnd, 5),
+            'rewatch_favorites' => $this->getRewatchFavorites($user, $rangeStart, $rangeEnd, 5),
+            'recent_activity' => $this->getRecentActivity($user, $rangeStart, $rangeEnd, 10),
         ];
     }
 
     /**
-     * Get content insights metrics.
+     * Get recent activity within a date range.
      */
-    public function getContentInsights(User $user, int $days = self::DEFAULT_RETENTION_DAYS): array
+    public function getRecentActivity(User $user, Carbon $startDate, Carbon $endDate, int $limit = 10): Collection
     {
-        $startDate = now()->subDays($days);
-
-        $mostWatchedVideos = $this->getMostWatchedVideos($user, $days, 10);
-        $topChannels = $this->getTopChannels($user, $days, 10);
-        $mostWatchedPlaylists = $this->getMostWatchedPlaylists($user, $days, 10);
-        $rewatchFavorites = $this->getRewatchFavorites($user, $days, 10);
-        $completionRates = $this->getCompletionRates($user, $days);
-
-        return [
-            'most_watched_videos' => $mostWatchedVideos,
-            'top_channels' => $topChannels,
-            'most_watched_playlists' => $mostWatchedPlaylists,
-            'rewatch_favorites' => $rewatchFavorites,
-            'completion_rates' => $completionRates,
-        ];
-    }
-
-    /**
-     * Get recent activity with device names.
-     * Uses same date range as other analytics methods for consistency.
-     * Filters out events where video relationship failed to load (deleted videos).
-     * Only includes events that have corresponding position data to match weekly statistics.
-     */
-    public function getRecentActivity(User $user, int $limit = 10, int $days = self::DEFAULT_RETENTION_DAYS): Collection
-    {
-        $startDate = now()->subDays($days);
-        
-        // Get all started/completed events
-        $events = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
+        return VideoWatchEvent::where('user_id', $user->id)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('event_type', [
                 VideoWatchEvent::EVENT_STARTED,
                 VideoWatchEvent::EVENT_COMPLETED,
@@ -311,19 +262,15 @@ class AnalyticsService
             ->whereNotNull('video_id')
             ->with(['video', 'playlist', 'deviceRegistration'])
             ->orderBy('created_at', 'desc')
-            ->limit($limit * 3) // Get more to account for filtering
+            ->limit($limit * 3)
             ->get()
             ->filter(function ($event) {
-                // Filter out events where video was deleted or relationship failed
                 if ($event->video === null) {
                     return false;
                 }
-                
-                // For started events, check if there's corresponding position data
-                // (to match what weekly statistics show)
+
                 if ($event->event_type === VideoWatchEvent::EVENT_STARTED) {
-                    // Check if there are position events for this video within the matching window
-                    $hasPositionData = VideoWatchEvent::where('user_id', $event->user_id)
+                    return VideoWatchEvent::where('user_id', $event->user_id)
                         ->where('video_id', $event->video_id)
                         ->where('created_at', '>=', $event->created_at)
                         ->where('created_at', '<=', $event->created_at->copy()->addHours(self::MATCHING_WINDOW_HOURS))
@@ -336,75 +283,21 @@ class AnalyticsService
                               });
                         })
                         ->exists();
-                    
-                    return $hasPositionData;
                 }
-                
-                // Completed events are always valid
+
                 return true;
             })
             ->take($limit)
             ->values();
-        
-        return $events;
-    }
-
-    /**
-     * Get time patterns.
-     */
-    public function getTimePatterns(User $user, int $days = self::DEFAULT_RETENTION_DAYS): array
-    {
-        return [
-            'hourly_distribution' => $this->getPeakViewingHours($user, $days),
-            'day_of_week' => $this->getDayOfWeekPatterns($user, $days),
-            'daily_trends' => $this->getDailyWatchTimeTrend($user, $days),
-        ];
-    }
-
-    /**
-     * Get session statistics (derived from events).
-     */
-    public function getSessionStats(User $user, int $days = self::DEFAULT_RETENTION_DAYS): array
-    {
-        $startDate = now()->subDays($days);
-
-        // Derive sessions from events
-        $sessions = $this->deriveSessionsFromEvents($user, $startDate, now());
-
-        $avgLength = $sessions->avg(function ($session) {
-            return $session['total_watch_time'] ?? 0;
-        }) ?? 0;
-        $avgVideos = $sessions->avg(function ($session) {
-            return $session['videos_watched'] ?? 0;
-        }) ?? 0;
-        $totalSessions = $sessions->count();
-
-        // Session duration distribution
-        $distribution = [
-            '0-15' => $sessions->filter(fn($s) => $s['total_watch_time'] < 900)->count(),
-            '15-30' => $sessions->filter(fn($s) => $s['total_watch_time'] >= 900 && $s['total_watch_time'] < 1800)->count(),
-            '30-60' => $sessions->filter(fn($s) => $s['total_watch_time'] >= 1800 && $s['total_watch_time'] < 3600)->count(),
-            '60+' => $sessions->filter(fn($s) => $s['total_watch_time'] >= 3600)->count(),
-        ];
-
-        return [
-            'average_length' => (int) round($avgLength),
-            'average_videos' => round($avgVideos, 1),
-            'total_sessions' => $totalSessions,
-            'duration_distribution' => $distribution,
-        ];
     }
 
     /**
      * Get top channels by watch time.
      */
-    public function getTopChannels(User $user, int $days = self::DEFAULT_RETENTION_DAYS, int $limit = 10): Collection
+    public function getTopChannels(User $user, Carbon $startDate, Carbon $endDate, int $limit = 5): Collection
     {
-        $startDate = now()->subDays($days);
-
-        // Get watch count from started events
         $channelStats = VideoWatchEvent::where('video_watch_events.user_id', $user->id)
-            ->where('video_watch_events.created_at', '>=', $startDate)
+            ->whereBetween('video_watch_events.created_at', [$startDate, $endDate])
             ->where('video_watch_events.event_type', VideoWatchEvent::EVENT_STARTED)
             ->whereNotNull('video_watch_events.video_id')
             ->join('videos', 'video_watch_events.video_id', '=', 'videos.id')
@@ -413,50 +306,39 @@ class AnalyticsService
             ->groupBy('videos.channel_id', 'videos.channel_name')
             ->get();
 
-        // Calculate actual watch time from all events with position data
-        // Use MAX position per video, then group by channel and sum
         $positionEvents = VideoWatchEvent::where('video_watch_events.user_id', $user->id)
-            ->where('video_watch_events.created_at', '>=', $startDate)
+            ->whereBetween('video_watch_events.created_at', [$startDate, $endDate])
             ->whereIn('video_watch_events.event_type', $this->getPositionEventTypes())
             ->whereNotNull('video_watch_events.video_id')
             ->with('video')
             ->get();
 
-        // Group by video_id, get max position per video (filter to events with valid position data)
         $maxPositionPerVideo = $positionEvents
-            ->filter(function ($e) {
-                return $this->hasValidPositionData($e);
-            })
+            ->filter(fn ($e) => $this->hasValidPositionData($e))
             ->groupBy('video_id')
-            ->map(function ($videoEvents) {
-                return $this->getMaxPositionFromEvents($videoEvents);
-            });
+            ->map(fn ($videoEvents) => $this->getMaxPositionFromEvents($videoEvents));
 
-        // Get video channel info for each video
-        $videoIds = $maxPositionPerVideo->keys();
-        $videos = Video::whereIn('id', $videoIds)->get()->keyBy('id');
+        $videos = Video::whereIn('id', $maxPositionPerVideo->keys())->get()->keyBy('id');
 
-        // Group by channel and sum max positions
         $channelWatchTimes = collect();
         foreach ($maxPositionPerVideo as $videoId => $maxPosition) {
             $video = $videos->get($videoId);
             if (!$video) {
                 continue;
             }
-            
+
             $key = ($video->channel_id ?? 'unknown') . '|' . ($video->channel_name ?? 'Unknown Channel');
             $channelWatchTimes->put($key, ($channelWatchTimes->get($key) ?? 0) + $maxPosition);
         }
 
         return $channelStats->map(function ($item) use ($channelWatchTimes) {
             $key = ($item->channel_id ?? 'unknown') . '|' . ($item->channel_name ?? 'Unknown Channel');
-            $watchTime = $channelWatchTimes->get($key) ?? 0;
-            
+
             return [
                 'channel_id' => $item->channel_id ?? 'unknown',
                 'channel_name' => $item->channel_name ?? 'Unknown Channel',
                 'watch_count' => (int) $item->watch_count,
-                'watch_time' => (int) $watchTime,
+                'watch_time' => (int) ($channelWatchTimes->get($key) ?? 0),
             ];
         })->sortByDesc('watch_time')->take($limit)->values();
     }
@@ -464,108 +346,62 @@ class AnalyticsService
     /**
      * Get most watched videos.
      */
-    public function getMostWatchedVideos(User $user, int $days = self::DEFAULT_RETENTION_DAYS, int $limit = 10): Collection
+    public function getMostWatchedVideos(User $user, Carbon $startDate, Carbon $endDate, int $limit = 5): Collection
     {
-        $startDate = now()->subDays($days);
-
-        // Get watch count, average completion, and most recent watch time from started events
         $videoStats = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('event_type', VideoWatchEvent::EVENT_STARTED)
             ->whereNotNull('video_id')
             ->with('video')
             ->select('video_id')
             ->selectRaw('COUNT(*) as watch_count')
-            ->selectRaw('AVG(completion_percentage) as avg_completion')
             ->selectRaw('MAX(created_at) as last_watched_at')
             ->groupBy('video_id')
             ->get();
 
-        // Calculate actual watch time from all events with position data
-        // Use MAX position per video (not SUM - position is absolute, not delta)
         $allPositionEvents = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('event_type', $this->getPositionEventTypes())
             ->whereNotNull('video_id')
             ->get();
-        
-        // Group by video and calculate watch time using helper method
+
         $videoWatchTimes = $allPositionEvents
             ->groupBy('video_id')
             ->map(function ($events) {
-                $validEvents = $events->filter(function ($e) {
-                    return $this->hasValidPositionData($e);
-                });
-                
+                $validEvents = $events->filter(fn ($e) => $this->hasValidPositionData($e));
+
                 if ($validEvents->isEmpty()) {
                     return 0;
                 }
-                
+
                 return $this->getMaxPositionFromEvents($validEvents);
             });
 
         return $videoStats
-            ->filter(function ($item) {
-                // Filter out videos where the relationship failed to load (deleted videos)
-                return $item->video !== null;
-            })
+            ->filter(fn ($item) => $item->video !== null)
             ->map(function ($item) use ($videoWatchTimes) {
-                $watchTime = $videoWatchTimes->get($item->video_id) ?? 0;
-                
                 return [
                     'video' => $item->video,
                     'watch_count' => (int) $item->watch_count,
-                    'total_watch_time' => (int) $watchTime,
-                    'avg_completion' => round((float) ($item->avg_completion ?? 0), 1),
+                    'total_watch_time' => (int) ($videoWatchTimes->get($item->video_id) ?? 0),
                     'last_watched_at' => $item->last_watched_at,
                 ];
             })
             ->sortBy([
                 ['watch_count', 'desc'],
-                ['last_watched_at', 'desc'], // Secondary sort by most recent for ties
+                ['last_watched_at', 'desc'],
             ])
             ->take($limit)
             ->values();
     }
 
     /**
-     * Get most watched playlists.
-     */
-    public function getMostWatchedPlaylists(User $user, int $days = self::DEFAULT_RETENTION_DAYS, int $limit = 10): Collection
-    {
-        $startDate = now()->subDays($days);
-
-        return VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
-            ->where('event_type', VideoWatchEvent::EVENT_STARTED)
-            ->whereNotNull('playlist_id')
-            ->with('playlist')
-            ->select('playlist_id')
-            ->selectRaw('COUNT(DISTINCT video_id) as videos_watched')
-            ->selectRaw('COUNT(*) as total_starts')
-            ->groupBy('playlist_id')
-            ->orderByDesc('total_starts')
-            ->limit($limit)
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'playlist' => $item->playlist,
-                    'videos_watched' => (int) $item->videos_watched,
-                    'total_starts' => (int) $item->total_starts,
-                    'avg_videos_per_session' => round($item->total_starts > 0 ? $item->videos_watched / $item->total_starts : 0, 1),
-                ];
-            });
-    }
-
-    /**
      * Get re-watch favorites (videos watched 5+ times).
      */
-    public function getRewatchFavorites(User $user, int $days = self::DEFAULT_RETENTION_DAYS, int $limit = 10): Collection
+    public function getRewatchFavorites(User $user, Carbon $startDate, Carbon $endDate, int $limit = 5): Collection
     {
-        $startDate = now()->subDays($days);
-
-        return VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
+        $favorites = VideoWatchEvent::where('user_id', $user->id)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->where('event_type', VideoWatchEvent::EVENT_STARTED)
             ->whereNotNull('video_id')
             ->with('video')
@@ -576,225 +412,146 @@ class AnalyticsService
             ->orderByDesc('watch_count')
             ->limit($limit)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'video' => $item->video,
-                    'watch_count' => (int) $item->watch_count,
-                ];
+            ->filter(fn ($item) => $item->video !== null);
+
+        $videoIds = $favorites->pluck('video_id');
+        $positionEvents = VideoWatchEvent::where('user_id', $user->id)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('event_type', $this->getPositionEventTypes())
+            ->whereIn('video_id', $videoIds)
+            ->get();
+
+        $videoWatchTimes = $positionEvents
+            ->groupBy('video_id')
+            ->map(function ($events) {
+                $validEvents = $events->filter(fn ($e) => $this->hasValidPositionData($e));
+
+                return $validEvents->isEmpty() ? 0 : $this->getMaxPositionFromEvents($validEvents);
             });
+
+        return $favorites->map(function ($item) use ($videoWatchTimes) {
+            return [
+                'video' => $item->video,
+                'watch_count' => (int) $item->watch_count,
+                'total_watch_time' => (int) ($videoWatchTimes->get($item->video_id) ?? 0),
+            ];
+        })->values();
     }
 
     /**
-     * Get completion rates.
-     * Calculates based on unique video sessions, not total event counts.
-     * A video can be started and completed multiple times, so we need to match them properly.
+     * Build watch-time series for the selected range and granularity.
      */
-    public function getCompletionRates(User $user, int $days = self::DEFAULT_RETENTION_DAYS): array
+    private function getWatchTimeSeries(User $user, Carbon $startDate, Carbon $endDate, string $granularity): array
     {
-        $startDate = now()->subDays($days);
-
-        // Get all started events with video_id
-        $startedEvents = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
-            ->where('event_type', VideoWatchEvent::EVENT_STARTED)
-            ->whereNotNull('video_id')
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        // Get all completed events with video_id
-        $completedEvents = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
-            ->where('event_type', VideoWatchEvent::EVENT_COMPLETED)
-            ->whereNotNull('video_id')
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        // Get all abandoned events
-        $abandonedEvents = VideoWatchEvent::where('user_id', $user->id)
-            ->where('created_at', '>=', $startDate)
-            ->where('event_type', VideoWatchEvent::EVENT_ABANDONED)
-            ->whereNotNull('video_id')
-            ->get();
-
-        // Match started events to completed events first
-        $matchResult = $this->matchEvents($startedEvents, $completedEvents, self::MATCHING_WINDOW_HOURS);
-        $matchedCompleted = $matchResult['matched'];
-        $matchedStartedIds = $matchResult['matchedStartedIds'];
-        $usedEventIds = $matchResult['usedEventIds'];
-
-        // Match remaining started events to abandoned events
-        $unmatchedStartedEvents = $startedEvents->whereNotIn('id', $matchedStartedIds);
-        $matchResult = $this->matchEvents($unmatchedStartedEvents, $abandonedEvents, self::MATCHING_WINDOW_HOURS, $usedEventIds);
-        $matchedAbandoned = $matchResult['matched'];
-        $matchedStartedIds = array_merge($matchedStartedIds, $matchResult['matchedStartedIds']);
-
-        $totalStarted = $startedEvents->count();
-        $fullyWatched = $matchedCompleted->count();
-        
-        // Partially watched = started events that were matched to abandoned OR unmatched started events
-        // (started but not completed and not abandoned)
-        $unmatchedStarted = $totalStarted - count($matchedStartedIds);
-        $partiallyWatched = $matchedAbandoned->count() + $unmatchedStarted;
-
-        $completionRate = $totalStarted > 0 ? ($fullyWatched / $totalStarted) * 100 : 0;
-
-        return [
-            'total_started' => $totalStarted,
-            'fully_watched' => $fullyWatched,
-            'partially_watched' => $partiallyWatched,
-            'completion_rate' => round($completionRate, 1),
-        ];
-    }
-
-    /**
-     * Get time stats for a specific period (derived from events).
-     */
-    private function getTimeStatsForPeriod(User $user, $startDate, $endDate): array
-    {
-        // Derive sessions from events
-        $sessions = $this->deriveSessionsFromEvents($user, $startDate, $endDate);
-
-        $watchTime = $sessions->sum(function ($session) {
-            return $session['total_watch_time'] ?? 0;
-        });
-        $sessionCount = $sessions->count();
-
-        return [
-            'watch_time' => (int) $watchTime,
-            'sessions' => $sessionCount,
-        ];
-    }
-
-    /**
-     * Get period watch time data (derived from events).
-     * 
-     * @param User $user
-     * @param string $period Period type: 'week', 'month', or 'year'
-     * @param \Carbon\Carbon $periodStart Period start date
-     * @param \Carbon\Carbon $periodEnd Period end date
-     * @return array
-     */
-    private function getPeriodWatchTime(User $user, string $period, $periodStart, $periodEnd): array
-    {
-        return match ($period) {
-            'week' => $this->getWeeklyWatchTimeData($user, $periodStart, $periodEnd),
-            'month' => $this->getMonthlyWatchTimeData($user, $periodStart, $periodEnd),
-            'year' => $this->getYearlyWatchTimeData($user, $periodStart, $periodEnd),
-            default => $this->getWeeklyWatchTimeData($user, $periodStart, $periodEnd),
+        return match ($granularity) {
+            'weekly' => $this->getWeeklyBucketWatchTimeData($user, $startDate, $endDate),
+            'monthly' => $this->getMonthlyBucketWatchTimeData($user, $startDate, $endDate),
+            default => $this->getDailyWatchTimeData($user, $startDate, $endDate),
         };
     }
 
     /**
-     * Get weekly watch time data (7 days, derived from events).
+     * Daily watch time buckets.
      */
-    private function getWeeklyWatchTimeData(User $user, $periodStart, $periodEnd): array
+    private function getDailyWatchTimeData(User $user, Carbon $startDate, Carbon $endDate): array
     {
-        $weeklyData = [];
-        $currentDate = $periodStart->copy();
-        
-        while ($currentDate->lte($periodEnd)) {
+        $data = [];
+        $currentDate = $startDate->copy()->startOfDay();
+
+        while ($currentDate->lte($endDate)) {
             $dayEnd = $currentDate->copy()->endOfDay();
-
-            // Calculate watch time from events for this day
-            $dayEvents = VideoWatchEvent::where('user_id', $user->id)
-                ->whereBetween('created_at', [$currentDate, $dayEnd])
-                ->whereIn('event_type', $this->getPositionEventTypes())
-                ->whereNotNull('video_id')
-                ->get();
-            
-            $watchTime = $this->calculateWatchTimeFromEvents($dayEvents);
-
-            $weeklyData[] = [
-                'date' => $currentDate->format('Y-m-d'),
-                'day' => $currentDate->format('D'),
-                'label' => $currentDate->format('M j'),
-                'watch_time' => (int) $watchTime,
-            ];
-            
-            $currentDate->addDay();
-        }
-
-        return $weeklyData;
-    }
-
-    /**
-     * Get monthly watch time data (daily aggregates, derived from events).
-     */
-    private function getMonthlyWatchTimeData(User $user, $periodStart, $periodEnd): array
-    {
-        $monthlyData = [];
-        $currentDate = $periodStart->copy();
-        
-        while ($currentDate->lte($periodEnd)) {
-            $dayEnd = $currentDate->copy()->endOfDay();
-
-            // Calculate watch time from events for this day
-            $dayEvents = VideoWatchEvent::where('user_id', $user->id)
-                ->whereBetween('created_at', [$currentDate, $dayEnd])
-                ->whereIn('event_type', $this->getPositionEventTypes())
-                ->whereNotNull('video_id')
-                ->get();
-            
-            $watchTime = $this->calculateWatchTimeFromEvents($dayEvents);
-
-            $monthlyData[] = [
-                'date' => $currentDate->format('Y-m-d'),
-                'day' => $currentDate->format('D'),
-                'label' => $currentDate->format('M j'),
-                'watch_time' => (int) $watchTime,
-            ];
-            
-            $currentDate->addDay();
-        }
-
-        return $monthlyData;
-    }
-
-    /**
-     * Get yearly watch time data (monthly aggregates, derived from events).
-     */
-    private function getYearlyWatchTimeData(User $user, $periodStart, $periodEnd): array
-    {
-        $yearlyData = [];
-        $currentDate = $periodStart->copy();
-        
-        while ($currentDate->lte($periodEnd)) {
-            $monthEnd = $currentDate->copy()->endOfMonth();
-            if ($monthEnd->gt($periodEnd)) {
-                $monthEnd = $periodEnd->copy();
+            if ($dayEnd->gt($endDate)) {
+                $dayEnd = $endDate->copy();
             }
 
-            // Calculate watch time from events for this month
-            $monthEvents = VideoWatchEvent::where('user_id', $user->id)
-                ->whereBetween('created_at', [$currentDate, $monthEnd])
+            $dayEvents = VideoWatchEvent::where('user_id', $user->id)
+                ->whereBetween('created_at', [$currentDate, $dayEnd])
                 ->whereIn('event_type', $this->getPositionEventTypes())
                 ->whereNotNull('video_id')
                 ->get();
-            
-            $watchTime = $this->calculateWatchTimeFromEvents($monthEvents);
 
-            $yearlyData[] = [
-                'date' => $currentDate->format('Y-m'),
-                'day' => $currentDate->format('M'),
-                'label' => $currentDate->format('M Y'),
-                'watch_time' => (int) $watchTime,
+            $data[] = [
+                'date' => $currentDate->format('Y-m-d'),
+                'label' => $currentDate->format('M j'),
+                'watch_time' => $this->calculateWatchTimeFromEvents($dayEvents),
             ];
-            
+
+            $currentDate->addDay();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Weekly watch time buckets (Mon–Sun within range).
+     */
+    private function getWeeklyBucketWatchTimeData(User $user, Carbon $startDate, Carbon $endDate): array
+    {
+        $data = [];
+        $currentDate = $startDate->copy()->startOfWeek();
+
+        while ($currentDate->lte($endDate)) {
+            $weekStart = $currentDate->greaterThan($startDate) ? $currentDate->copy() : $startDate->copy();
+            $weekEnd = $currentDate->copy()->endOfWeek();
+            if ($weekEnd->gt($endDate)) {
+                $weekEnd = $endDate->copy();
+            }
+
+            $weekEvents = VideoWatchEvent::where('user_id', $user->id)
+                ->whereBetween('created_at', [$weekStart, $weekEnd])
+                ->whereIn('event_type', $this->getPositionEventTypes())
+                ->whereNotNull('video_id')
+                ->get();
+
+            $data[] = [
+                'date' => $weekStart->format('Y-m-d'),
+                'label' => $weekStart->format('M j'),
+                'watch_time' => $this->calculateWatchTimeFromEvents($weekEvents),
+            ];
+
+            $currentDate->addWeek();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Monthly watch time buckets.
+     */
+    private function getMonthlyBucketWatchTimeData(User $user, Carbon $startDate, Carbon $endDate): array
+    {
+        $data = [];
+        $currentDate = $startDate->copy()->startOfMonth();
+
+        while ($currentDate->lte($endDate)) {
+            $monthStart = $currentDate->greaterThan($startDate) ? $currentDate->copy() : $startDate->copy();
+            $monthEnd = $currentDate->copy()->endOfMonth();
+            if ($monthEnd->gt($endDate)) {
+                $monthEnd = $endDate->copy();
+            }
+
+            $monthEvents = VideoWatchEvent::where('user_id', $user->id)
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereIn('event_type', $this->getPositionEventTypes())
+                ->whereNotNull('video_id')
+                ->get();
+
+            $data[] = [
+                'date' => $monthStart->format('Y-m'),
+                'label' => $monthStart->format('M Y'),
+                'watch_time' => $this->calculateWatchTimeFromEvents($monthEvents),
+            ];
+
             $currentDate->addMonth()->startOfMonth();
         }
 
-        return $yearlyData;
+        return $data;
     }
 
     /**
-     * Get peak viewing hours (hourly distribution).
-     * 
-     * @param User $user
-     * @param \Carbon\Carbon $startDate Period start date
-     * @param \Carbon\Carbon $endDate Period end date
-     * @return array
+     * Get peak viewing hours (hourly distribution of started events).
      */
-    private function getPeakViewingHours(User $user, $startDate, $endDate): array
+    private function getPeakViewingHours(User $user, Carbon $startDate, Carbon $endDate): array
     {
         $events = VideoWatchEvent::where('user_id', $user->id)
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -816,14 +573,9 @@ class AnalyticsService
     }
 
     /**
-     * Get day of week patterns (derived from events).
-     * 
-     * @param User $user
-     * @param \Carbon\Carbon $startDate Period start date
-     * @param \Carbon\Carbon $endDate Period end date
-     * @return array
+     * Get day of week patterns (watch time per weekday).
      */
-    private function getDayOfWeekPatterns(User $user, $startDate, $endDate): array
+    private function getDayOfWeekPatterns(User $user, Carbon $startDate, Carbon $endDate): array
     {
         $dayPatterns = [
             'Monday' => 0,
@@ -835,21 +587,16 @@ class AnalyticsService
             'Sunday' => 0,
         ];
 
-        // Calculate from events - group by day, then calculate watch time per day
         $events = VideoWatchEvent::where('user_id', $user->id)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('event_type', $this->getPositionEventTypes())
             ->whereNotNull('video_id')
             ->get();
 
-        // Group events by day of week and calculate watch time per day
-        $eventsByDay = $events->groupBy(function ($event) {
-            return $event->created_at->format('l');
-        });
+        $eventsByDay = $events->groupBy(fn ($event) => $event->created_at->format('l'));
 
         foreach ($eventsByDay as $dayName => $dayEvents) {
             if (isset($dayPatterns[$dayName])) {
-                // Calculate watch time for this day using helper method
                 $dayPatterns[$dayName] += $this->calculateWatchTimeFromEvents($dayEvents);
             }
         }
@@ -858,123 +605,37 @@ class AnalyticsService
     }
 
     /**
-     * Get daily watch time trend (derived from events).
+     * Resolve chart granularity from range length.
      */
-    private function getDailyWatchTimeTrend(User $user, int $days): array
+    private function resolveGranularity(Carbon $startDate, Carbon $endDate): string
     {
-        $startDate = now()->subDays($days);
+        $days = $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
 
-        $dailyData = [];
-        $currentDate = $startDate->copy();
-
-        while ($currentDate <= now()) {
-            $dayEnd = $currentDate->copy()->endOfDay();
-
-            // Calculate watch time from events for this day
-            $dayEvents = VideoWatchEvent::where('user_id', $user->id)
-                ->whereBetween('created_at', [$currentDate, $dayEnd])
-                ->whereIn('event_type', $this->getPositionEventTypes())
-                ->whereNotNull('video_id')
-                ->get();
-            
-            $watchTime = $this->calculateWatchTimeFromEvents($dayEvents);
-
-            $dailyData[] = [
-                'date' => $currentDate->format('Y-m-d'),
-                'watch_time' => (int) $watchTime,
-            ];
-
-            $currentDate->addDay();
+        if ($days <= 31) {
+            return 'daily';
         }
 
-        return $dailyData;
-    }
-
-    /**
-     * Match started events to target events (completed or abandoned) within a time window.
-     * 
-     * @param Collection $startedEvents Collection of started events
-     * @param Collection $targetEvents Collection of target events (completed or abandoned)
-     * @param int $windowHours Time window in hours
-     * @param array $usedEventIds Optional array of already-used event IDs to exclude
-     * @return array ['matched' => Collection, 'matchedStartedIds' => array, 'usedEventIds' => array]
-     */
-    private function matchEvents(Collection $startedEvents, Collection $targetEvents, int $windowHours, array $usedEventIds = []): array
-    {
-        $matched = collect();
-        $matchedStartedIds = [];
-        $usedIds = $usedEventIds;
-
-        foreach ($startedEvents as $started) {
-            // Find the first target event for this video that hasn't been matched yet
-            $target = $targetEvents
-                ->where('video_id', $started->video_id)
-                ->where('created_at', '>=', $started->created_at)
-                ->where('created_at', '<=', $started->created_at->copy()->addHours($windowHours))
-                ->whereNotIn('id', $usedIds)
-                ->first();
-
-            if ($target) {
-                $matched->push($target);
-                $usedIds[] = $target->id;
-                $matchedStartedIds[] = $started->id;
-            }
+        if ($days <= 90) {
+            return 'weekly';
         }
 
-        return [
-            'matched' => $matched,
-            'matchedStartedIds' => $matchedStartedIds,
-            'usedEventIds' => $usedIds,
-        ];
+        return 'monthly';
     }
 
     /**
-     * Calculate period start and end dates based on period type and offset.
-     * 
-     * @param string $period Period type: 'week', 'month', or 'year'
-     * @param int $offset Offset from current period (0 = current, -1 = previous, etc.)
-     * @return array [startDate, endDate]
+     * Human-readable range label.
      */
-    private function calculatePeriodDates(string $period, int $offset): array
+    private function formatRangeLabel(Carbon $startDate, Carbon $endDate): string
     {
-        $now = now();
-        
-        return match ($period) {
-            'week' => [
-                $now->copy()->addWeeks($offset)->startOfWeek(),
-                $now->copy()->addWeeks($offset)->endOfWeek(),
-            ],
-            'month' => [
-                $now->copy()->addMonths($offset)->startOfMonth(),
-                $now->copy()->addMonths($offset)->endOfMonth(),
-            ],
-            'year' => [
-                $now->copy()->addYears($offset)->startOfYear(),
-                $now->copy()->addYears($offset)->endOfYear(),
-            ],
-            default => [
-                $now->copy()->addWeeks($offset)->startOfWeek(),
-                $now->copy()->addWeeks($offset)->endOfWeek(),
-            ],
-        };
-    }
+        if ($startDate->isSameDay($endDate)) {
+            return $startDate->format('M j, Y');
+        }
 
-    /**
-     * Format period label for display.
-     * 
-     * @param string $period Period type: 'week', 'month', or 'year'
-     * @param \Carbon\Carbon $periodStart Period start date
-     * @param \Carbon\Carbon $periodEnd Period end date
-     * @return string
-     */
-    private function formatPeriodLabel(string $period, $periodStart, $periodEnd): string
-    {
-        return match ($period) {
-            'week' => $periodStart->format('M j') . ' - ' . $periodEnd->format('M j, Y'),
-            'month' => $periodStart->format('F Y'),
-            'year' => $periodStart->format('Y'),
-            default => $periodStart->format('M j') . ' - ' . $periodEnd->format('M j, Y'),
-        };
+        if ($startDate->year === $endDate->year) {
+            return $startDate->format('M j') . ' – ' . $endDate->format('M j, Y');
+        }
+
+        return $startDate->format('M j, Y') . ' – ' . $endDate->format('M j, Y');
     }
 }
 

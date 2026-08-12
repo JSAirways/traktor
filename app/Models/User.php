@@ -204,6 +204,20 @@ class User extends Authenticatable implements HasLocalePreference
         return !empty($this->view_pin);
     }
 
+    /**
+     * Public URL for the user's profile picture, if set.
+     */
+    public function profilePictureUrl(): ?string
+    {
+        if (!$this->profile_picture) {
+            return null;
+        }
+
+        $category = $this->profile_picture_category ?? 'cats';
+
+        return asset('assets/profile-pictures/' . $category . '/' . $this->profile_picture);
+    }
+
     public function canManage(User $user): bool
     {
         if ($this->isAdmin()) {

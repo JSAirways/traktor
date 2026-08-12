@@ -93,7 +93,7 @@ class ContentController extends Controller
         if ($user->isAdmin()) {
             // Admins can manage all users
             // Select only required columns for better performance
-            return User::select('id', 'username', 'slug', 'email', 'role', 'parent_id')
+            return User::select('id', 'username', 'slug', 'email', 'role', 'parent_id', 'profile_picture', 'profile_picture_category')
                 ->orderBy('username')
                 ->get();
         }
@@ -104,7 +104,7 @@ class ContentController extends Controller
         if ($user->children()->exists()) {
             $users = $users->merge(
                 $user->children()
-                    ->select('id', 'username', 'slug', 'email', 'role', 'parent_id')
+                    ->select('id', 'username', 'slug', 'email', 'role', 'parent_id', 'profile_picture', 'profile_picture_category')
                     ->orderBy('username')
                     ->get()
             );

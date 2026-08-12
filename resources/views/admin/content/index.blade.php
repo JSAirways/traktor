@@ -1,27 +1,22 @@
 @extends('layouts.admin')
 
 @section('content')
+<h2 class="mb-3">{{ __('admin.content') }}</h2>
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <div class="d-flex flex-column gap-2">
-        <h2 class="mb-0">{{ __('admin.content') }}</h2>
-        @if(isset($availableUsers) && $availableUsers->count() > 1)
-            <form method="GET" action="{{ route('admin.content.index') }}" class="d-flex align-items-center gap-2">
-                <label for="user_id" class="form-label mb-0">{{ __('admin.managing_content_for') }}</label>
-                <select name="user_id" id="user_id" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
-                    @foreach($availableUsers as $user)
-                        <option value="{{ $user->id }}" {{ $selectedUserId == $user->id ? 'selected' : '' }}>
-                            {{ $user->username }}
-                            @if($user->id === auth()->id())
-                                ({{ __('common.you') }})
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-            </form>
-        @elseif(isset($selectedUser))
-            <p class="text-muted mb-0 small">{{ __('admin.managing_content_for') }} <strong>{{ $selectedUser->username }}</strong></p>
-        @endif
-    </div>
+    @if(isset($availableUsers) && $availableUsers->count() > 0)
+        <x-ui.user-selector
+            :users="$availableUsers"
+            :selected="$selectedUser"
+            :route="route('admin.content.index')"
+            param="user_id"
+            value-key="id"
+            id="contentUserSelector"
+            :aria-label="__('admin.managing_content_for')"
+        />
+    @else
+        <div></div>
+    @endif
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addVideoModal">
             <i class="bi bi-plus me-1"></i>

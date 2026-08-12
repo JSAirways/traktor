@@ -1,29 +1,28 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">{{ __('admin.device_management') }}</h2>
-</div>
+<div class="mb-3">
+    <h2 class="mb-3">{{ __('admin.device_management') }}</h2>
 
-{{-- Filter by Parent --}}
-@if(isset($allParents) && $allParents->count() > 0)
-    <div class="mb-3">
-        <form method="GET" action="{{ route('admin.devices.index') }}" class="d-flex align-items-center gap-2">
-            <label for="user_id" class="form-label mb-0">{{ __('admin.filter_by_parent') }}</label>
-            <select name="user_id" id="user_id" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
-                <option value="">{{ __('admin.all_parents') }}</option>
-                @foreach($allParents as $parent)
-                    <option value="{{ $parent->id }}" {{ $userFilter == $parent->id ? 'selected' : '' }}>
-                        {{ $parent->username }}
-                    </option>
-                @endforeach
-            </select>
-            @if($userFilter)
-                <a href="{{ route('admin.devices.index') }}" class="btn btn-outline-secondary border-0">{{ __('common.clear') }}</a>
-            @endif
-        </form>
-    </div>
-@endif
+    {{-- Filter by Parent --}}
+    @if(isset($allParents) && $allParents->count() > 0)
+        @php
+            $selectedParent = $userFilter
+                ? $allParents->firstWhere('id', (int) $userFilter)
+                : null;
+        @endphp
+        <x-ui.user-selector
+            :users="$allParents"
+            :selected="$selectedParent"
+            :route="route('admin.devices.index')"
+            param="user_id"
+            value-key="id"
+            id="devicesUserSelector"
+            :all-label="__('admin.all_parents')"
+            :aria-label="__('admin.filter_by_parent')"
+        />
+    @endif
+</div>
 
 @if($parents->count() === 0)
     <x-ui.toast-notification 

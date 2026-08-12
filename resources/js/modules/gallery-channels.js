@@ -564,7 +564,7 @@ export class GalleryChannels {
         if (isInPlaylistView) {
             const tiles = galleryContent.querySelectorAll('[data-channel-id]');
             for (const tile of tiles) {
-                const columnWrapper = tile.closest?.('.col-sm-6, .col-md-4');
+                let columnWrapper = tile.closest?.('.col-sm-6, .col-md-4');
                 if (!columnWrapper && tile.parentElement) {
                     // Fallback for older browsers
                     let parent = tile.parentElement;

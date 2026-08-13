@@ -1,28 +1,30 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="mb-3">
-    <h2 class="mb-3">{{ __('admin.device_management') }}</h2>
-
-    {{-- Filter by Parent --}}
-    @if(isset($allParents) && $allParents->count() > 0)
-        @php
-            $selectedParent = $userFilter
-                ? $allParents->firstWhere('id', (int) $userFilter)
-                : null;
-        @endphp
-        <x-ui.user-selector
-            :users="$allParents"
-            :selected="$selectedParent"
-            :route="route('admin.devices.index')"
-            param="user_id"
-            value-key="id"
-            id="devicesUserSelector"
-            :all-label="__('admin.all_parents')"
-            :aria-label="__('admin.filter_by_parent')"
-        />
-    @endif
-</div>
+<x-admin.page-header :title="__('admin.device_management')">
+    <x-slot name="controls">
+        @if(isset($allParents) && $allParents->count() > 0)
+            @php
+                $selectedParent = $userFilter
+                    ? $allParents->firstWhere('id', (int) $userFilter)
+                    : null;
+            @endphp
+            <x-ui.user-selector
+                :users="$allParents"
+                :selected="$selectedParent"
+                :route="route('admin.devices.index')"
+                param="user_id"
+                value-key="id"
+                id="devicesUserSelector"
+                :all-label="__('admin.all_parents')"
+                :aria-label="__('admin.filter_by_parent')"
+            />
+        @else
+            <div></div>
+        @endif
+        <div></div>
+    </x-slot>
+</x-admin.page-header>
 
 @if($parents->count() === 0)
     <x-ui.toast-notification 

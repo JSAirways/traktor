@@ -1,12 +1,15 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <div>
-        <h2 class="mb-0" id="deviceNameDisplay">{{ __('admin.device_prefix') }} {{ $device->device_name ?? __('admin.unnamed_device') }}</h2>
-    </div>
-    <a href="{{ route('admin.parent-devices.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('admin.back_to_devices') }}</a>
-</div>
+<x-admin.page-header
+    :title="__('admin.device_prefix') . ' ' . ($device->device_name ?? __('admin.unnamed_device'))"
+    title-id="deviceNameDisplay"
+>
+    <x-slot name="controls">
+        <div></div>
+        <a href="{{ route('admin.parent-devices.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('admin.back_to_devices') }}</a>
+    </x-slot>
+</x-admin.page-header>
 
 <div class="row">
     <div class="col-lg-7 mb-4">

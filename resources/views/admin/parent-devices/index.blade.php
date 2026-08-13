@@ -1,9 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">{{ __('admin.my_devices') }}</h2>
-</div>
+<x-admin.page-header :title="__('admin.my_devices')" />
 
 @if($devices->count() === 0)
     <x-ui.toast-notification 

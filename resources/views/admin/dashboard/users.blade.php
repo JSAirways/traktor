@@ -1,12 +1,11 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <div class="d-flex flex-column gap-2">
-        <h2 class="mb-0">{{ __('admin.dashboard') }} - {{ __('admin.users') }}</h2>
+<x-admin.page-header :title="__('admin.dashboard') . ' - ' . __('admin.users')">
+    <x-slot name="subtitle">
         <p class="text-muted mb-0 small">{{ __('admin.select_user_to_view_analytics') }}</p>
-    </div>
-</div>
+    </x-slot>
+</x-admin.page-header>
 
 @if($parents->isEmpty())
     <div class="alert alert-info" role="alert">

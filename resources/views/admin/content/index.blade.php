@@ -1,33 +1,33 @@
 @extends('layouts.admin')
 
 @section('content')
-<h2 class="mb-3">{{ __('admin.content') }}</h2>
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    @if(isset($availableUsers) && $availableUsers->count() > 0)
-        <x-ui.user-selector
-            :users="$availableUsers"
-            :selected="$selectedUser"
-            :route="route('admin.content.index')"
-            param="user_id"
-            value-key="id"
-            id="contentUserSelector"
-            :aria-label="__('admin.managing_content_for')"
-        />
-    @else
-        <div></div>
-    @endif
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addVideoModal">
-            <i class="bi bi-plus me-1"></i>
-            {{ __('admin.add_video') }}
-        </button>
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#channelImportModal">
-            <i class="bi bi-youtube me-1"></i>
-            {{ __('admin.add_channel') }}
-        </button>
-    </div>
-</div>
+<x-admin.page-header :title="__('admin.content')">
+    <x-slot name="controls">
+        @if(isset($availableUsers) && $availableUsers->count() > 0)
+            <x-ui.user-selector
+                :users="$availableUsers"
+                :selected="$selectedUser"
+                :route="route('admin.content.index')"
+                param="user_id"
+                value-key="id"
+                id="contentUserSelector"
+                :aria-label="__('admin.managing_content_for')"
+            />
+        @else
+            <div></div>
+        @endif
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addVideoModal">
+                <i class="bi bi-plus me-1"></i>
+                {{ __('admin.add_video') }}
+            </button>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#channelImportModal">
+                <i class="bi bi-youtube me-1"></i>
+                {{ __('admin.add_channel') }}
+            </button>
+        </div>
+    </x-slot>
+</x-admin.page-header>
 
 @if(count($content) === 0)
     <div class="min-vh-50 d-flex flex-column align-items-center justify-content-center py-3">

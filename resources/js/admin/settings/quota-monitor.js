@@ -13,9 +13,14 @@ import { errorHandler } from '../../core/error-handler.js';
 class QuotaMonitor {
     constructor() {
         // Cache DOM elements
+        this.quotaCard = document.getElementById('quotaCard');
+        this.quotaCardBody = document.getElementById('quotaCardBody');
+        this.enabledToggle = document.getElementById('youtubeQuotaEnabledToggle');
         this.refreshBtn = document.getElementById('refreshQuotaBtn');
         this.refreshBtnText = document.getElementById('refreshBtnText');
         this.quotaContent = document.getElementById('quotaContent');
+        this.quotaMonitoringPanel = document.getElementById('quotaMonitoringPanel');
+        this.quotaNotConfiguredAlert = document.getElementById('quotaNotConfiguredAlert');
         this.quotaUsed = document.getElementById('quotaUsed');
         this.quotaLimit = document.getElementById('quotaLimit');
         this.quotaRemaining = document.getElementById('quotaRemaining');
@@ -42,27 +47,73 @@ class QuotaMonitor {
         }
         
         this.isLoading = false;
+        this.hasFetched = false;
         
         this.init();
     }
+
+    isConfigured() {
+        return this.quotaCard?.dataset?.quotaConfigured === '1';
+    }
+
+    isEnabled() {
+        return Boolean(this.enabledToggle?.checked);
+    }
     
     init() {
+        if (this.enabledToggle) {
+            this.enabledToggle.addEventListener('change', () => {
+                this.applyEnabledState({ fetchIfNeeded: true });
+            });
+        }
+
         // Attach event listener to refresh button
         if (this.refreshBtn) {
             this.refreshBtn.addEventListener('click', () => {
                 this.fetchQuotaData();
             });
         }
-        
-        // Fetch quota data on page load
-        this.fetchQuotaData();
+
+        this.applyEnabledState({ fetchIfNeeded: true });
+    }
+
+    /**
+     * Show/hide quota card body and refresh control based on enable toggle.
+     */
+    applyEnabledState({ fetchIfNeeded = false } = {}) {
+        const enabled = this.isEnabled();
+
+        if (this.quotaCardBody) {
+            this.quotaCardBody.classList.toggle('d-none', !enabled);
+        }
+        if (this.refreshBtn) {
+            this.refreshBtn.classList.toggle('d-none', !enabled);
+        }
+        if (this.quotaCard) {
+            this.quotaCard.dataset.quotaEnabled = enabled ? '1' : '0';
+        }
+
+        if (!enabled) {
+            return;
+        }
+
+        if (this.isConfigured()) {
+            this.quotaMonitoringPanel?.classList.remove('d-none');
+            this.quotaNotConfiguredAlert?.classList.add('d-none');
+            if (fetchIfNeeded && !this.hasFetched) {
+                this.fetchQuotaData();
+            }
+        } else {
+            this.quotaMonitoringPanel?.classList.add('d-none');
+            this.quotaNotConfiguredAlert?.classList.remove('d-none');
+        }
     }
     
     /**
      * Fetch quota data from API
      */
     async fetchQuotaData() {
-        if (this.isLoading) {
+        if (this.isLoading || !this.isEnabled() || !this.isConfigured()) {
             return;
         }
         
@@ -81,15 +132,19 @@ class QuotaMonitor {
                 timeout: 15000
             });
             
-            // Extract data from response object
-            const data = response.data || response; // Backward compatibility fallback
+            // Extract data from response object ({ success, data: { used, ... } })
+            const data = response.data || response;
+            const quota = (data?.success && data?.data && typeof data.data === 'object')
+                ? { ...data, ...data.data }
+                : data;
             
-            if (data?.success) {
-                this.updateQuotaDisplay(data);
+            if (quota?.success) {
+                this.updateQuotaDisplay(quota);
                 this.loadingManager.hideError();
+                this.hasFetched = true;
             } else {
                 this.loadingManager.showError(
-                    data?.message || 'Failed to fetch quota data',
+                    quota?.message || 'Failed to fetch quota data',
                     'messages.quota_fetch_failed',
                     'Failed to fetch quota data'
                 );
@@ -97,16 +152,24 @@ class QuotaMonitor {
         } catch (error) {
             // Try to extract error message from response
             let errorMessage = error?.message || 'Configuration error';
+            let errorDetails = null;
             if (error?.response) {
                 try {
                     const errorData = typeof error.response === 'string' ? JSON.parse(error.response) : error.response;
                     if (errorData?.message) {
                         errorMessage = errorData.message;
                     }
+                    if (errorData?.errors?.details) {
+                        errorDetails = errorData.errors.details;
+                    }
                 } catch (e) {
                     // Use default error message if parsing fails
                 }
             }
+
+            const displayMessage = errorDetails
+                ? `${errorMessage} ${errorDetails}`
+                : errorMessage;
             
             // Handle 404 gracefully (endpoint not implemented)
             if (error?.status === 404) {
@@ -116,20 +179,18 @@ class QuotaMonitor {
                     'Quota monitoring endpoint not available. Please ensure Google Cloud Monitoring API is configured.'
                 );
             } else if (error?.status === 403) {
-                // Authentication/authorization error - user might not be logged in or not admin
-                // This can happen if session expired or user doesn't have admin access
+                // App-level auth (not Google Cloud IAM) — show server message when present
                 this.loadingManager.showError(
-                    null,
+                    displayMessage,
                     'messages.unauthorized_access',
                     'Unauthorized access. Please refresh the page and try again.'
                 );
             } else if (error?.status === 400) {
-                // Log error for debugging
-                console.log('Quota fetch error (400):', errorMessage);
+                // Config / Google Cloud permission issues
                 this.loadingManager.showError(
-                    errorMessage,
+                    displayMessage,
                     'messages.quota_config_error',
-                    errorMessage
+                    displayMessage
                 );
             } else if (error?.message === 'Request timeout') {
                 if (errorHandler?.handleTimeoutError) {
@@ -157,7 +218,11 @@ class QuotaMonitor {
                         context: { action: 'fetchQuotaData' }
                     });
                 }
-                this.loadingManager.showError(null, 'messages.quota_fetch_failed', 'Failed to fetch quota data. Please try again.');
+                this.loadingManager.showError(
+                    displayMessage,
+                    'messages.quota_fetch_failed',
+                    'Failed to fetch quota data. Please try again.'
+                );
             }
         } finally {
             this.isLoading = false;

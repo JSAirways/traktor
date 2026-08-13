@@ -7,34 +7,60 @@
 
 <div class="dashboard-page">
     @if($showTitle)
-        <h2 class="mb-3 mb-md-3">{{ __('admin.dashboard') }}</h2>
-    @endif
+        <x-admin.page-header :title="__('admin.dashboard')">
+            <x-slot name="controls">
+                @if($showUserSelector)
+                    <x-ui.user-selector
+                        :users="$availableUsers"
+                        :selected="$displayUser"
+                        :route="$userSelectorRoute"
+                        param="slug"
+                        value-key="slug"
+                        id="dashboardUserSelector"
+                        :aria-label="__('admin.viewing_analytics_for')"
+                    />
+                @else
+                    <div></div>
+                @endif
 
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3 mb-md-4 gap-3">
-        @if($showUserSelector)
-            <x-ui.user-selector
-                :users="$availableUsers"
-                :selected="$displayUser"
-                :route="$userSelectorRoute"
-                param="slug"
-                value-key="slug"
-                id="dashboardUserSelector"
-                :aria-label="__('admin.viewing_analytics_for')"
-            />
-        @else
-            <div></div>
-        @endif
+                <div class="dashboard-range-controls d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2" id="dashboardRangeControls">
+                    <div class="btn-group" role="group" aria-label="{{ __('admin.date_range') }}">
+                        <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="7">{{ __('admin.last_7_days') }}</button>
+                        <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset active" data-preset="28">{{ __('admin.last_28_days') }}</button>
+                        <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="90">{{ __('admin.last_90_days') }}</button>
+                        <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="custom" id="dashboardCustomRangeBtn">{{ __('admin.custom_range') }}</button>
+                    </div>
+                    <small class="text-muted dashboard-custom-range-label d-none" id="dashboardCustomRangeLabel"></small>
+                </div>
+            </x-slot>
+        </x-admin.page-header>
+    @else
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3 mb-md-4 gap-3">
+            @if($showUserSelector)
+                <x-ui.user-selector
+                    :users="$availableUsers"
+                    :selected="$displayUser"
+                    :route="$userSelectorRoute"
+                    param="slug"
+                    value-key="slug"
+                    id="dashboardUserSelector"
+                    :aria-label="__('admin.viewing_analytics_for')"
+                />
+            @else
+                <div></div>
+            @endif
 
-        <div class="dashboard-range-controls d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2" id="dashboardRangeControls">
-            <div class="btn-group" role="group" aria-label="{{ __('admin.date_range') }}">
-                <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="7">{{ __('admin.last_7_days') }}</button>
-                <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset active" data-preset="28">{{ __('admin.last_28_days') }}</button>
-                <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="90">{{ __('admin.last_90_days') }}</button>
-                <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="custom" id="dashboardCustomRangeBtn">{{ __('admin.custom_range') }}</button>
+            <div class="dashboard-range-controls d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2" id="dashboardRangeControls">
+                <div class="btn-group" role="group" aria-label="{{ __('admin.date_range') }}">
+                    <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="7">{{ __('admin.last_7_days') }}</button>
+                    <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset active" data-preset="28">{{ __('admin.last_28_days') }}</button>
+                    <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="90">{{ __('admin.last_90_days') }}</button>
+                    <button type="button" class="btn btn-outline-success btn-sm dashboard-range-preset" data-preset="custom" id="dashboardCustomRangeBtn">{{ __('admin.custom_range') }}</button>
+                </div>
+                <small class="text-muted dashboard-custom-range-label d-none" id="dashboardCustomRangeLabel"></small>
             </div>
-            <small class="text-muted dashboard-custom-range-label d-none" id="dashboardCustomRangeLabel"></small>
         </div>
-    </div>
+    @endif
 
     <div id="dashboardContent" class="dashboard-loading">
         <div class="text-center py-5">

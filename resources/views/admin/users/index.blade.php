@@ -1,22 +1,23 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <div class="d-flex flex-column gap-2">
-        <h2 class="mb-0">{{ __('admin.users') }}</h2>
-        @if($pendingCount > 0)
-            <a href="{{ route('admin.users.pending') }}" class="btn btn-warning btn-sm">
-                <i class="bi bi-hourglass-split me-1"></i>
-                {{ $pendingCount }} {{ $pendingCount > 1 ? __('admin.pending_registrations_plural') : __('admin.pending_registration') }}
-            </a>
-        @endif
-    </div>
-    <div class="d-flex gap-2">
-        @can('admin')
-            <a href="{{ route('admin.users.create') }}" class="btn btn-success">{{ __('admin.add_user') }}</a>
-        @endcan
-    </div>
-</div>
+<x-admin.page-header :title="__('admin.users')">
+    <x-slot name="controls">
+        <div>
+            @if($pendingCount > 0)
+                <a href="{{ route('admin.users.pending') }}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    {{ $pendingCount }} {{ $pendingCount > 1 ? __('admin.pending_registrations_plural') : __('admin.pending_registration') }}
+                </a>
+            @endif
+        </div>
+        <div class="d-flex gap-2">
+            @can('admin')
+                <a href="{{ route('admin.users.create') }}" class="btn btn-success">{{ __('admin.add_user') }}</a>
+            @endcan
+        </div>
+    </x-slot>
+</x-admin.page-header>
 
 {{-- Status Filter --}}
 <div class="mb-3">

@@ -1,10 +1,12 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">{{ __('admin.pending_registrations') }}</h2>
-    <a href="{{ route('admin.users.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('admin.back_to_users') }}</a>
-</div>
+<x-admin.page-header :title="__('admin.pending_registrations')">
+    <x-slot name="controls">
+        <div></div>
+        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('admin.back_to_users') }}</a>
+    </x-slot>
+</x-admin.page-header>
 
 @if(session('error'))
     <x-ui.toast-notification type="error" message="{{ session('error') }}" />

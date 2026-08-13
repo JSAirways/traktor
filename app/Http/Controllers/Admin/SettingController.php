@@ -22,12 +22,14 @@ class SettingController extends Controller
         $adminNotificationEmails = Setting::where('key', 'admin_notification_emails')->first();
         $googleCloudProjectId = Setting::where('key', 'google_cloud_project_id')->first();
         $googleCloudServiceAccount = Setting::where('key', 'google_cloud_service_account')->first();
+        $youtubeQuotaEnabled = Setting::where('key', 'youtube_quota_enabled')->first();
         
         return view('admin.settings.edit', compact(
             'apiKey',
             'adminNotificationEmails',
             'googleCloudProjectId',
-            'googleCloudServiceAccount'
+            'googleCloudServiceAccount',
+            'youtubeQuotaEnabled'
         ));
     }
 
@@ -70,6 +72,7 @@ class SettingController extends Controller
                     }
                 }
             }],
+            'youtube_quota_enabled' => 'nullable|in:0,1',
         ]);
 
         Setting::updateOrCreate(
@@ -90,6 +93,11 @@ class SettingController extends Controller
         Setting::updateOrCreate(
             ['key' => 'google_cloud_service_account'],
             ['value' => $validated['google_cloud_service_account'] ?? '']
+        );
+
+        Setting::updateOrCreate(
+            ['key' => 'youtube_quota_enabled'],
+            ['value' => ($validated['youtube_quota_enabled'] ?? '0') === '1' ? '1' : '0']
         );
 
         return redirect()->route('admin.settings.edit')

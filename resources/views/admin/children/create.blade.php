@@ -1,10 +1,12 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">Add Child</h2>
-    <a href="{{ route('admin.children.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>Back</a>
-</div>
+<x-admin.page-header :title="__('admin.add_child')">
+    <x-slot name="controls">
+        <div></div>
+        <a href="{{ route('admin.children.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('common.back') }}</a>
+    </x-slot>
+</x-admin.page-header>
 
 <form method="POST" action="{{ route('admin.children.store') }}">
     @csrf

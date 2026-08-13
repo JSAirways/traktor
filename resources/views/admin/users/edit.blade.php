@@ -1,14 +1,16 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">{{ isset($isSelfEdit) && $isSelfEdit ? __('admin.edit_my_profile') : __('admin.edit_user') }}</h2>
-    @if(isset($isSelfEdit) && $isSelfEdit)
-        <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('common.back') }}</a>
-    @else
-        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('common.back') }}</a>
-    @endif
-</div>
+<x-admin.page-header :title="isset($isSelfEdit) && $isSelfEdit ? __('admin.edit_my_profile') : __('admin.edit_user')">
+    <x-slot name="controls">
+        <div></div>
+        @if(isset($isSelfEdit) && $isSelfEdit)
+            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('common.back') }}</a>
+        @else
+            <a href="{{ route('admin.users.index') }}" class="btn btn-outline-success"><i class="bi bi-chevron-left me-1"></i>{{ __('common.back') }}</a>
+        @endif
+    </x-slot>
+</x-admin.page-header>
 
 <form method="POST" action="{{ isset($isSelfEdit) && $isSelfEdit ? route('admin.profile.update') : route('admin.users.update', $user) }}">
     @csrf

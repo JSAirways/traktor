@@ -1,9 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <div class="d-flex flex-column gap-2">
-        <h2 class="mb-0">{{ __('admin.dashboard') }} - {{ $user->username }}</h2>
+<x-admin.page-header :title="__('admin.dashboard') . ' - ' . $user->username">
+    <x-slot name="subtitle">
         <div class="d-flex align-items-center gap-2">
             <x-ui.user-avatar
                 :user="$user"
@@ -21,12 +20,15 @@
                 @endif
             </div>
         </div>
-    </div>
-    <a href="{{ route('admin.dashboard.users') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>
-        {{ __('admin.back_to_users') }}
-    </a>
-</div>
+    </x-slot>
+    <x-slot name="controls">
+        <div></div>
+        <a href="{{ route('admin.dashboard.users') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            {{ __('admin.back_to_users') }}
+        </a>
+    </x-slot>
+</x-admin.page-header>
 
 @include('admin.dashboard._panel', [
     'displayUser' => $displayUser,

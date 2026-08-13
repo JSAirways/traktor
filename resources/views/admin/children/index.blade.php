@@ -1,13 +1,15 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-2">
-    <h2 class="mb-0">{{ __('admin.my_children') }}</h2>
-    <a href="{{ route('admin.children.create') }}" class="btn btn-success">
-        <i class="bi bi-plus-circle me-1"></i>
-        {{ __('admin.add_child') }}
-    </a>
-</div>
+<x-admin.page-header :title="__('admin.my_children')">
+    <x-slot name="controls">
+        <div></div>
+        <a href="{{ route('admin.children.create') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>
+            {{ __('admin.add_child') }}
+        </a>
+    </x-slot>
+</x-admin.page-header>
 
 @if($children->count() === 0)
     <x-ui.toast-notification 

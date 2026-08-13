@@ -61,15 +61,28 @@ class QuotaController extends Controller
             $errorMessage = $e->getMessage();
             $statusCode = 500;
             
-            // Check for permission denied errors (handle both plain text and JSON-encoded errors)
             $errorMessageLower = strtolower($errorMessage);
+
+            // Billing required — Google often returns this as PERMISSION_DENIED (code 7)
+            if (strpos($errorMessageLower, 'billing') !== false) {
+                return response()->error(
+                    __('admin.youtube_quota_billing_required'),
+                    ['details' => __('admin.youtube_quota_billing_required_help')],
+                    400
+                );
+            }
+
+            // Check for permission denied errors (handle both plain text and JSON-encoded errors)
+            // Use 400 — this is a Google Cloud credentials/IAM issue, not an app auth failure.
+            // Returning 403 made the settings UI show a misleading "refresh / unauthorized" message.
             if (strpos($errorMessageLower, 'permission_denied') !== false || 
                 strpos($errorMessageLower, 'permission denied') !== false ||
-                strpos($errorMessageLower, 'code\": 7') !== false) {
+                strpos($errorMessageLower, 'code\": 7') !== false ||
+                strpos($errorMessageLower, '"code": 7') !== false) {
                 return response()->error(
                     __('admin.youtube_quota_permission_denied'),
                     ['details' => __('admin.youtube_quota_permission_denied_help')],
-                    403
+                    400
                 );
             }
             

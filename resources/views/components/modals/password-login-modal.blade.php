@@ -31,7 +31,7 @@
         <input type="hidden" name="email" id="passwordLoginModalEmail">
         {{-- device_name is set to password-only login flag via JavaScript --}}
         <input type="hidden" name="device_name" id="passwordLoginModalDeviceName" value="">
-        <input type="hidden" name="device_fingerprint" id="passwordLoginModalFingerprint">
+        <input type="hidden" name="device_uid" id="passwordLoginModalDeviceUid">
         <input type="hidden" name="user_agent" id="passwordLoginModalUserAgent">
         <input type="hidden" name="screen_resolution" id="passwordLoginModalScreenResolution">
         <input type="hidden" name="capabilities" id="passwordLoginModalCapabilities">

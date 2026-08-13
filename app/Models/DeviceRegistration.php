@@ -8,8 +8,8 @@ class DeviceRegistration extends Model
 {
     protected $fillable = [
         'parent_user_id',
+        'device_uid',
         'device_token',
-        'device_fingerprint',
         'user_agent',
         'screen_resolution',
         'device_name',
@@ -33,23 +33,6 @@ class DeviceRegistration extends Model
         'is_active' => 'boolean',
         'capabilities' => 'array',
     ];
-
-    public static function generateFingerprint(array $browserData): string
-    {
-        $fingerprintString = implode('|', [
-            $browserData['user_agent'] ?? '',
-            $browserData['screen_width'] ?? '',
-            $browserData['screen_height'] ?? '',
-            $browserData['timezone'] ?? '',
-            $browserData['language'] ?? '',
-            $browserData['platform'] ?? '',
-            $browserData['color_depth'] ?? '',
-            $browserData['pixel_ratio'] ?? '',
-        ]);
-
-        return hash('sha256', $fingerprintString);
-    }
-
 
     public function parent()
     {

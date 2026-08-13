@@ -30,10 +30,6 @@ class DeviceController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // Check if device fingerprint has previous registrations (from query param or session)
-        $deviceFingerprint = $request->input('device_fingerprint') 
-            ?? $request->session()->get('device_fingerprint');
-        
         // Always show back button to welcome page - user should be able to navigate back
         $showBackButton = true;
 
@@ -98,7 +94,7 @@ class DeviceController extends Controller
                 
                 // Registration form error - redirect back to registration page
                 return redirect()->route('device.register.show')
-                    ->withInput($request->only('email', 'device_name', 'device_fingerprint', 'user_agent', 'screen_resolution'))
+                    ->withInput($request->only('email', 'device_name', 'device_uid', 'user_agent', 'screen_resolution'))
                     ->withErrors([
                         'email' => __('auth.invalid_credentials'),
                         'password' => __('auth.invalid_credentials')
@@ -114,38 +110,19 @@ class DeviceController extends Controller
             return redirect()->route('pending-approval');
         }
 
-        // Get fingerprint from request (already hashed on client side)
-        $deviceFingerprint = $request->device_fingerprint ?? null;
+        // Prefer HttpOnly cookie device_uid over client-supplied value (PS4 / fixation safety)
+        $deviceUid = $this->deviceService->resolveDeviceUidFromRequest($request, $request->input('device_uid'));
         $capabilities = $this->extractCapabilities($request);
 
         // Check if THIS user already registered this device (prevent duplicate registration under same account)
-        // Note: Different users CAN register the same device - only prevent same user registering twice
-        // IMPORTANT: Always check for duplicates, even if fingerprint is null (defensive check)
+        // Note: Different users CAN register the same device_uid - only prevent same user registering twice
         if (!$isPasswordOnlyLogin) {
-            // Check if THIS user already has this device registered (active or inactive)
-            // First check by fingerprint (most reliable)
-            $thisUserDevice = null;
-            if ($deviceFingerprint) {
-                $thisUserDevice = \App\Models\DeviceRegistration::where('parent_user_id', $parent->id)
-                    ->where('device_fingerprint', $deviceFingerprint)
-                    ->orderBy('last_used_at', 'desc')
-                    ->orderBy('registered_at', 'desc')
-                    ->orderBy('id', 'desc')
-                    ->first();
-            }
-            
-            // If no match by fingerprint, check by user_agent + screen_resolution as fallback
-            // This helps catch cases where fingerprint generation failed or was inconsistent
-            if (!$thisUserDevice && $request->user_agent && $request->screen_resolution) {
-                $thisUserDevice = \App\Models\DeviceRegistration::where('parent_user_id', $parent->id)
-                    ->where('user_agent', $request->user_agent)
-                    ->where('screen_resolution', $request->screen_resolution)
-                    ->whereNull('device_fingerprint') // Only check devices without fingerprint
-                    ->orderBy('last_used_at', 'desc')
-                    ->orderBy('registered_at', 'desc')
-                    ->orderBy('id', 'desc')
-                    ->first();
-            }
+            $thisUserDevice = \App\Models\DeviceRegistration::where('parent_user_id', $parent->id)
+                ->where('device_uid', $deviceUid)
+                ->orderBy('last_used_at', 'desc')
+                ->orderBy('registered_at', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
             
             if ($thisUserDevice) {
                 // Solution 2: Check if token is expired - allow re-registration if expired
@@ -164,7 +141,7 @@ class DeviceController extends Controller
                     \Log::warning('Duplicate device registration attempt prevented (token still valid)', [
                         'parent_id' => $parent->id,
                         'device_id' => $thisUserDevice->id,
-                        'fingerprint' => $deviceFingerprint,
+                        'device_uid' => $deviceUid,
                         'user_agent' => $request->user_agent,
                         'screen_resolution' => $request->screen_resolution,
                         'token_expires_at' => $thisUserDevice->token_expires_at,
@@ -188,7 +165,7 @@ class DeviceController extends Controller
                 \Log::info('Allowing re-registration of device with expired token', [
                     'parent_id' => $parent->id,
                     'device_id' => $thisUserDevice->id,
-                    'fingerprint' => $deviceFingerprint,
+                    'device_uid' => $deviceUid,
                     'token_expired_at' => $thisUserDevice->token_expires_at,
                     'expired_days_ago' => $thisUserDevice->token_expires_at ? now()->diffInDays($thisUserDevice->token_expires_at) : null,
                 ]);
@@ -196,19 +173,15 @@ class DeviceController extends Controller
         }
 
         // Check if device was reactivated or newly created
-        $wasReactivated = false;
-        if ($deviceFingerprint) {
-            $existingDevice = \App\Models\DeviceRegistration::where('parent_user_id', $parent->id)
-                ->where('device_fingerprint', $deviceFingerprint)
-                ->where('is_active', false)
-                ->first();
-            $wasReactivated = (bool) $existingDevice;
-        }
+        $wasReactivated = \App\Models\DeviceRegistration::where('parent_user_id', $parent->id)
+            ->where('device_uid', $deviceUid)
+            ->where('is_active', false)
+            ->exists();
 
         // Register device
         [$device, $signedToken] = $this->deviceService->registerDevice($parent, [
             'device_name' => $request->device_name,
-            'device_fingerprint' => $deviceFingerprint,
+            'device_uid' => $deviceUid,
             'user_agent' => $request->user_agent,
             'screen_resolution' => $request->screen_resolution,
             'capabilities' => $capabilities,
@@ -233,8 +206,7 @@ class DeviceController extends Controller
             ? __('messages.device_reactivated')
             : __('messages.device_registered');
 
-        // Set device cookie expiration
-        $expiration = config('access.device_cookie_expiration', 525600);
+        [$tokenCookie, $parentCookie, $uidCookie] = $this->deviceService->makeDeviceCookies($device, $signedToken);
 
         // Check if AJAX request - return JSON with redirect URL
         // Check for AJAX/JSON request using multiple methods for compatibility
@@ -244,35 +216,25 @@ class DeviceController extends Controller
             || $request->header('Accept') === 'application/json';
             
         if ($isAjaxRequest) {
-            // For AJAX requests, set cookies directly in the response
-            // Use session config for path/domain to ensure cookies are available
-            $sessionConfig = config('session');
-            $cookiePath = $sessionConfig['path'] ?? '/';
-            $cookieDomain = $sessionConfig['domain'] ?? null;
-            $cookieSecure = $sessionConfig['secure'] ?? null;
-            $cookieSameSite = $sessionConfig['same_site'] ?? 'lax';
-            
             return response()->success(
-                ['redirect' => url('/')], // Use absolute URL for redirect
+                [
+                    'redirect' => url('/'),
+                    'device_uid' => $device->device_uid,
+                ],
                 $successMessage,
                 200
             )
-            ->withCookie(cookie('device_token', $signedToken, $expiration, $cookiePath, $cookieDomain, $cookieSecure, true, false, $cookieSameSite))
-            ->withCookie(cookie('parent_user_id', $device->parent_user_id, $expiration, $cookiePath, $cookieDomain, $cookieSecure, true, false, $cookieSameSite));
+            ->withCookie($tokenCookie)
+            ->withCookie($parentCookie)
+            ->withCookie($uidCookie);
         }
 
         // For non-AJAX requests, set cookies and redirect
-        // Use session config for cookie path/domain to ensure consistency
-        $sessionConfig = config('session');
-        $cookiePath = $sessionConfig['path'] ?? '/';
-        $cookieDomain = $sessionConfig['domain'] ?? null;
-        $cookieSecure = $sessionConfig['secure'] ?? null;
-        $cookieSameSite = $sessionConfig['same_site'] ?? 'lax';
-        
         return redirect()->route('home')
             ->with('success', $successMessage)
-            ->withCookie(cookie('device_token', $signedToken, $expiration, $cookiePath, $cookieDomain, $cookieSecure, true, false, $cookieSameSite))
-            ->withCookie(cookie('parent_user_id', $device->parent_user_id, $expiration, $cookiePath, $cookieDomain, $cookieSecure, true, false, $cookieSameSite));
+            ->withCookie($tokenCookie)
+            ->withCookie($parentCookie)
+            ->withCookie($uidCookie);
     }
 
     /**
@@ -302,27 +264,26 @@ class DeviceController extends Controller
     }
 
     /**
-     * Get registered users for a device fingerprint (API endpoint).
+     * Get registered users for a durable device_uid (API endpoint).
+     * Falls back to device_uid cookie when body is empty (PS4 without localStorage).
      */
     public function getRegisteredUsers(Request $request)
     {
         try {
             $request->validate([
-                'device_fingerprint' => 'required|string|max:64',
+                'device_uid' => 'nullable|uuid',
             ]);
 
-            $fingerprint = trim($request->device_fingerprint);
-            
-            // Validate fingerprint format (should be 64 character hex string)
-            if (strlen($fingerprint) !== 64 || !ctype_xdigit($fingerprint)) {
-                \Log::warning('Invalid device fingerprint format received', [
-                    'fingerprint_length' => strlen($fingerprint),
-                    'fingerprint_preview' => substr($fingerprint, 0, 10) . '...',
-                ]);
+            $deviceUid = $this->deviceService->resolveDiscoveryDeviceUid(
+                $request,
+                $request->input('device_uid')
+            );
+
+            if (!$deviceUid) {
                 return response()->json([]);
             }
-            
-            $devices = $this->deviceService->getUsersByDeviceFingerprint($fingerprint);
+
+            $devices = $this->deviceService->getUsersByDeviceUid($deviceUid);
 
             // Map devices to user data - service already filters out null parents
             $users = $devices->map(function ($device) {
@@ -377,44 +338,6 @@ class DeviceController extends Controller
             ]);
             return response()->json(['error' => 'Internal server error'], 500);
         }
-    }
-
-    /**
-     * Generate device fingerprint from browser data (API endpoint).
-     * Used as fallback when JavaScript crypto.subtle is not available.
-     */
-    public function generateFingerprint(Request $request)
-    {
-        $request->validate([
-            'user_agent' => 'required|string',
-            'screen_width' => 'required|integer|min:0',
-            'screen_height' => 'required|integer|min:0',
-            'timezone' => 'required|string',
-            'language' => 'required|string',
-            'platform' => 'required|string',
-            'color_depth' => 'required|integer|min:0',
-            'pixel_ratio' => 'required|numeric|min:0',
-        ]);
-
-        // Normalize data to match JavaScript normalization
-        $browserData = [
-            'user_agent' => $request->user_agent,
-            'screen_width' => (int) floor($request->screen_width),
-            'screen_height' => (int) floor($request->screen_height),
-            'timezone' => trim($request->timezone),
-            'language' => strtolower($request->language),
-            'platform' => $request->platform,
-            'color_depth' => (int) floor($request->color_depth),
-            'pixel_ratio' => round((float) $request->pixel_ratio, 2),
-        ];
-
-        // Generate fingerprint using the same method as registration
-        $fingerprint = \App\Models\DeviceRegistration::generateFingerprint($browserData);
-
-        return response()->json([
-            'fingerprint' => $fingerprint,
-            'browser_data' => $browserData, // Return normalized data for consistency
-        ]);
     }
 
     /**
@@ -486,7 +409,8 @@ class DeviceController extends Controller
                 $decoded = null;
             }
 
-            if (is_array($decoded) && array_is_list($decoded)) {
+            if (is_array($decoded)) {
+                // Capability payloads are associative objects, not lists
                 return $decoded;
             }
         }
@@ -494,8 +418,3 @@ class DeviceController extends Controller
         return [];
     }
 }
-
-
-
-
-

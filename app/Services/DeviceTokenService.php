@@ -52,7 +52,7 @@ class DeviceTokenService
         return $token;
     }
 
-    public function decode(string $token): ?array
+    public function decode(string $token, bool $enforceExpiration = true): ?array
     {
         if (!$this->isSignedToken($token)) {
             return null;
@@ -71,11 +71,20 @@ class DeviceTokenService
             return null;
         }
 
-        if (!empty($payload['exp']) && now()->timestamp > (int) $payload['exp']) {
+        if ($enforceExpiration && !empty($payload['exp']) && now()->timestamp > (int) $payload['exp']) {
             return null;
         }
 
         return $payload;
+    }
+
+    /**
+     * Decode a signed token without rejecting expired payloads.
+     * Used so validateDevice can apply grace-period refresh.
+     */
+    public function decodeAllowExpired(string $token): ?array
+    {
+        return $this->decode($token, false);
     }
 
     public function isSignedToken(string $token): bool

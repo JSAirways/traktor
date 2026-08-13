@@ -22,7 +22,6 @@
 {
     "catGifs": @json($catGifs ?? []),
     "registeredUsersRoute": "{{ route('api.device.registered-users') }}",
-    "fingerprintApiRoute": "{{ route('api.device.generate-fingerprint') }}",
     "catGifBasePath": "{{ asset('assets/profile-pictures/cats') }}/",
     "csrfToken": "{{ csrf_token() }}",
     "hasPasswordError": @json($errors->has('password') && old('username')),

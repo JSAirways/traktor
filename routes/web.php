@@ -21,7 +21,6 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/device/logout', [App\Http\Controllers\DeviceController::class, 'logout'])->name('device.logout');
 Route::post('/api/device/registered-users', [App\Http\Controllers\DeviceController::class, 'getRegisteredUsers'])->name('api.device.registered-users');
-Route::post('/api/device/generate-fingerprint', [App\Http\Controllers\DeviceController::class, 'generateFingerprint'])->name('api.device.generate-fingerprint');
 Route::post('/api/device/refresh-capabilities', [App\Http\Controllers\DeviceController::class, 'refreshCapabilities'])->name('api.device.refresh-capabilities');
 
 // API endpoints (also in api.php, but adding here as fallback for session support)

@@ -6,15 +6,15 @@
 import { makeRequest } from './utils.js';
 
 /**
- * Fetches registered users for a device fingerprint
+ * Fetches registered users for a durable device_uid
  * Uses XMLHttpRequest for universal browser compatibility
- * @param {string} fingerprint - The device fingerprint hash
+ * @param {string} deviceUid - The durable device UUID
  * @param {string} registeredUsersRoute - The API route for fetching registered users
  * @param {string} csrfToken - CSRF token for the request
  * @returns {Promise<Array>} Promise that resolves to array of user objects
  * @throws {Error} If the request fails or route/token is missing
  */
-export function fetchRegisteredUsers(fingerprint, registeredUsersRoute, csrfToken) {
+export function fetchRegisteredUsers(deviceUid, registeredUsersRoute, csrfToken) {
     if (!registeredUsersRoute || !csrfToken) {
         return Promise.reject(new Error('Missing registered users route or CSRF token'));
     }
@@ -22,7 +22,7 @@ export function fetchRegisteredUsers(fingerprint, registeredUsersRoute, csrfToke
     return makeRequest(registeredUsersRoute, {
         method: 'POST',
         body: {
-            device_fingerprint: fingerprint
+            device_uid: deviceUid || null
         },
         headers: {
             'X-CSRF-TOKEN': csrfToken

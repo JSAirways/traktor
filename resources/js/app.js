@@ -20,7 +20,7 @@ import './core/error-handler.js';
 import './core/bootstrap-js.js'; // Makes Bootstrap available globally
 import './core/loading-state-manager.js';
 import './core/modal-utils.js';
-import './core/device-fingerprint.js';
+import './core/device-identity.js';
 import './core/device-api.js';
 import './core/pwa-installer.js';
 import './core/asset-version-checker.js';
@@ -30,7 +30,7 @@ import './core/cache-version-monitor.js';
 import { initPWA } from './core/pwa-installer.js';
 import { checkAssetVersion } from './core/asset-version-checker.js';
 import { initOrientationDetection } from './core/orientation.js';
-import { collectBrowserData, collectCapabilities } from './core/device-fingerprint.js';
+import { collectBrowserData, collectCapabilities } from './core/device-identity.js';
 import { refreshCapabilities } from './core/device-api.js';
 
 // Shared resources (available on all pages)

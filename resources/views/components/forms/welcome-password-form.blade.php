@@ -24,7 +24,7 @@
                 @csrf
                 <input type="hidden" name="username" id="passwordFormUsername" value="{{ $username }}">
                 <input type="hidden" name="device_name" id="passwordFormDeviceName" value="{{ $deviceName ?? 'Unnamed Device' }}">
-                <input type="hidden" name="device_fingerprint" id="passwordFormFingerprint">
+                <input type="hidden" name="device_uid" id="passwordFormDeviceUid">
                 <input type="hidden" name="user_agent" id="passwordFormUserAgent">
                 <input type="hidden" name="screen_resolution" id="passwordFormScreenResolution">
                 <input type="hidden" name="capabilities" id="passwordFormCapabilities">

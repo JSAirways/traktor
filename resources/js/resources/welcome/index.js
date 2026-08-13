@@ -3,7 +3,7 @@
  * Handles user selection and password login modal
  */
 
-import { collectBrowserData, collectCapabilities, generateDeviceFingerprint, setFingerprintInForms } from '../../core/device-fingerprint.js';
+import { collectBrowserData, collectCapabilities, getOrCreateDeviceUid, persistDeviceUid, setDeviceUidInForms } from '../../core/device-identity.js';
 import { fetchRegisteredUsers } from '../../core/device-api.js';
 import { openModal, setupModalFocus } from '../../core/modal-utils.js';
 import { makeRequest, getElementJson, getCsrfToken, toggleVisibility, getTranslation } from '../../core/utils.js';
@@ -12,16 +12,37 @@ import { errorHandler } from '../../core/error-handler.js';
 import { initI18n, t } from '../../core/i18n.js';
 
 // Module state
-let deviceFingerprint = null;
+let deviceUid = null;
 let browserData = null;
 let capabilitySnapshot = null;
 let registeredUsers = [];
 let availableCatGifs = [];
 let registeredUsersRoute = null;
-let fingerprintApiRoute = null;
 let catGifBasePath = null;
 let moduleCsrfToken = null; // CSRF token stored in module scope, not global
 let userSelectionDataMap = null; // User data map for event delegation (module scope)
+
+/**
+ * Ensure device UID is available and synced into forms.
+ */
+function ensureDeviceUidInForms() {
+    browserData = refreshBrowserSnapshot(true);
+    deviceUid = getOrCreateDeviceUid?.() ?? deviceUid;
+    if (deviceUid && setDeviceUidInForms) {
+        setDeviceUidInForms(deviceUid, browserData, capabilitySnapshot);
+    }
+    return deviceUid;
+}
+
+/**
+ * Persist device_uid from a successful API response when present.
+ * @param {object} responseData
+ */
+function applyDeviceUidFromResponse(responseData) {
+    if (responseData?.device_uid && persistDeviceUid) {
+        deviceUid = persistDeviceUid(responseData.device_uid) || responseData.device_uid;
+    }
+}
 
 // Initialize configuration from embedded JSON script tag
 function initializeConfig() {
@@ -37,7 +58,6 @@ function initializeConfig() {
     if (config && Object.keys(config).length > 0) {
         availableCatGifs = config.catGifs || [];
         registeredUsersRoute = config.registeredUsersRoute || null;
-        fingerprintApiRoute = config.fingerprintApiRoute || null;
         catGifBasePath = config.catGifBasePath || '';
         
         // Get CSRF token - store in module scope, not global
@@ -177,9 +197,10 @@ function showUserSelection(users) {
     const otherOption = otherOptionTemplate.content.cloneNode(true);
     const otherLink = otherOption.querySelector('a');
     
-    // Update href with fingerprint if available
-    if (otherLink && deviceFingerprint) {
-        otherLink.href = `/register-device?device_fingerprint=${encodeURIComponent(deviceFingerprint)}`;
+    // Update href — do not put device_uid in the query string (fixation risk).
+    // localStorage / sessionStorage already carry the uid into the register page.
+    if (otherLink) {
+        otherLink.href = '/register-device';
     }
     
     grid.appendChild(otherOption);
@@ -321,10 +342,10 @@ function openPasswordLoginModal(email, username, deviceName, profilePictureFilen
         filename: profilePictureFilename
     };
     
-    // Ensure fingerprint is set in modal
-    if (deviceFingerprint) {
-        const modalFingerprint = document.getElementById('passwordLoginModalFingerprint');
-        if (modalFingerprint) modalFingerprint.value = deviceFingerprint;
+    // Ensure device_uid is set in modal
+    if (deviceUid) {
+        const modalDeviceUid = document.getElementById('passwordLoginModalDeviceUid');
+        if (modalDeviceUid) modalDeviceUid.value = deviceUid;
     }
     
     // Open modal using shared utility
@@ -476,23 +497,30 @@ function openLoginModalFromToast(email, username, deviceName, profilePictureFile
     
     // Ensure we have email before proceeding
     if (finalEmail) {
-        // Ensure we have fingerprint and browser data
-        if (!deviceFingerprint || !browserData) {
-            browserData = refreshBrowserSnapshot(true);
-            generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-                deviceFingerprint = fingerprint;
-                if (setFingerprintInForms) {
-                    setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-                }
-                openPasswordLoginModal(finalEmail, finalUsername, deviceName, profilePicture);
-            }).catch(() => {
-                // On error, still try to open modal (don't block user)
-                openPasswordLoginModal(finalEmail, finalUsername, deviceName, profilePicture);
-            });
-        } else {
-            openPasswordLoginModal(finalEmail, finalUsername, deviceName, profilePicture);
+        // Ensure we have device UID and browser data
+        if (!deviceUid || !browserData) {
+            ensureDeviceUidInForms();
         }
+        openPasswordLoginModal(finalEmail, finalUsername, deviceName, profilePicture);
     }
+}
+
+/**
+ * Extract users array from fetchRegisteredUsers response
+ * @param {*} response
+ * @returns {Array}
+ */
+function extractUsersFromResponse(response) {
+    let users = response;
+    if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+        users = response.data;
+    } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
+        users = response.data || [];
+    } else if (response && typeof response === 'object' && 'error' in response) {
+        console.warn('API returned error:', response.error);
+        users = [];
+    }
+    return Array.isArray(users) ? users : [];
 }
 
 // Check for registered users on page load
@@ -532,92 +560,60 @@ function checkRegisteredUsers() {
         // Hide loading view immediately
         toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
         
-        browserData = refreshBrowserSnapshot(true);
+        ensureDeviceUidInForms();
         
-        generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-            deviceFingerprint = fingerprint;
-            if (setFingerprintInForms) {
-                setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-            }
-            
-            // Check for registered users to get profile picture
-            fetchRegisteredUsers?.(fingerprint, registeredUsersRoute, moduleCsrfToken)
-                .then((response) => {
-                    // Handle response object format from makeRequest
-                    let users = response;
-                    if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-                        users = response.data;
-                    } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-                        users = response.data || [];
+        // Check for registered users to get profile picture
+        fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
+            .then((response) => {
+                registeredUsers = extractUsersFromResponse(response);
+                
+                // Find user's profile picture
+                let user = null;
+                let profilePicture = '';
+                if (registeredUsers && registeredUsers.length > 0) {
+                    user = registeredUsers.find(u => u.username === oldUsername);
+                }
+                if (user) {
+                    if (user.profile_picture) {
+                        profilePicture = user.profile_picture;
                     }
-                    registeredUsers = Array.isArray(users) ? users : [];
+                    // Get email from user object (required for authentication)
+                    const email = user.email || '';
                     
-                    // Find user's profile picture
-                    let user = null;
-                    let profilePicture = '';
-                    if (registeredUsers && registeredUsers.length > 0) {
-                        user = registeredUsers.find(u => u.username === oldUsername);
-                    }
-                    if (user) {
-                        if (user.profile_picture) {
-                            profilePicture = user.profile_picture;
+                    // Open modal with error state
+                    openPasswordLoginModal(email, oldUsername, oldDeviceName, profilePicture);
+                }
+                
+                // Mark password field as invalid after modal is shown
+                const modalElement = document.getElementById('passwordLoginModal');
+                if (modalElement) {
+                    modalElement.addEventListener('shown.bs.modal', () => {
+                        const passwordField = document.getElementById('passwordLoginModalPassword');
+                        if (passwordField) {
+                            passwordField.classList.add('is-invalid');
+                            passwordField.focus();
                         }
-                        // Get email from user object (required for authentication)
-                        const email = user.email || '';
-                        
-                        // Open modal with error state
-                        openPasswordLoginModal(email, oldUsername, oldDeviceName, profilePicture);
-                    }
-                    
-                    // Mark password field as invalid after modal is shown
-                    const modalElement = document.getElementById('passwordLoginModal');
-                    if (modalElement) {
-                        modalElement.addEventListener('shown.bs.modal', () => {
-                            const passwordField = document.getElementById('passwordLoginModalPassword');
-                            if (passwordField) {
-                                passwordField.classList.add('is-invalid');
-                                passwordField.focus();
-                            }
-                        }, { once: true });
-                    }
-                })
-                .catch(() => {
-                    // Error fetching users, still open modal (don't redirect!)
-                    // Note: Without email, authentication will fail, but we show the modal anyway
-                    registeredUsers = [];
-                    openPasswordLoginModal('', oldUsername, oldDeviceName, '');
-                    
-                    // Mark password field as invalid after modal is shown
-                    const modalElement = document.getElementById('passwordLoginModal');
-                    if (modalElement) {
-                        modalElement.addEventListener('shown.bs.modal', () => {
-                            const passwordField = document.getElementById('passwordLoginModalPassword');
-                            if (passwordField) {
-                                passwordField.classList.add('is-invalid');
-                                passwordField.focus();
-                            }
-                        }, { once: true });
-                    }
-                });
-        }).catch(() => {
-            // Silently handle fingerprint generation errors
-            // Still try to open modal (don't redirect!)
-            // Note: Without email, authentication will fail, but we show the modal anyway
-            registeredUsers = [];
-            openPasswordLoginModal('', oldUsername, oldDeviceName, '');
-            
-            // Mark password field as invalid after modal is shown
-            const modalElement = document.getElementById('passwordLoginModal');
-            if (modalElement) {
-                modalElement.addEventListener('shown.bs.modal', () => {
-                    const passwordField = document.getElementById('passwordLoginModalPassword');
-                    if (passwordField) {
-                        passwordField.classList.add('is-invalid');
-                        passwordField.focus();
-                    }
-                }, { once: true });
-            }
-        });
+                    }, { once: true });
+                }
+            })
+            .catch(() => {
+                // Error fetching users, still open modal (don't redirect!)
+                // Note: Without email, authentication will fail, but we show the modal anyway
+                registeredUsers = [];
+                openPasswordLoginModal('', oldUsername, oldDeviceName, '');
+                
+                // Mark password field as invalid after modal is shown
+                const modalElement = document.getElementById('passwordLoginModal');
+                if (modalElement) {
+                    modalElement.addEventListener('shown.bs.modal', () => {
+                        const passwordField = document.getElementById('passwordLoginModalPassword');
+                        if (passwordField) {
+                            passwordField.classList.add('is-invalid');
+                            passwordField.focus();
+                        }
+                    }, { once: true });
+                }
+            });
         
         return; // Don't continue with normal flow
     }
@@ -633,84 +629,47 @@ function checkRegisteredUsers() {
         return;
     }
     
-    browserData = refreshBrowserSnapshot(true);
+    ensureDeviceUidInForms();
     
-    generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-        deviceFingerprint = fingerprint;
-        if (setFingerprintInForms) {
-            setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-        }
-        
-        // Check for registered users
-        fetchRegisteredUsers?.(fingerprint, registeredUsersRoute, moduleCsrfToken)
-            .then((response) => {
-                // Handle response object format from makeRequest
-                // Extract users from response object if needed
-                let users = response;
-                if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-                    users = response.data;
-                } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-                    // Response object but data might not be array - try to extract
-                    users = response.data || [];
-                } else if (response && typeof response === 'object' && 'error' in response) {
-                    // API returned an error - treat as empty
-                    console.warn('API returned error:', response.error);
-                    users = [];
-                }
-                
-                // Ensure users is an array
-                if (!Array.isArray(users)) {
-                    users = [];
-                }
-                
-                // Clear timeout since we got the data
-                clearTimeout(timeoutId);
-                
-                registeredUsers = users;
-                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                
-                // Always show user selection - update UI even if timeout already fired
-                // This handles the case where timeout showed empty state, but now we have real data
-                if (timeoutFired && users && users.length > 0) {
-                    // Timeout already fired, but we got users - update the UI with real data
-                    showUserSelection(users);
-                } else {
-                    // Normal case - show user selection
-                    showUserSelection(users);
-                }
-                userSelectionShown = true;
-            })
-            .catch((error) => {
-                // Log error details
-                console.error('checkRegisteredUsers: Error fetching registered users:', error);
-                
-                // Clear timeout on error
-                clearTimeout(timeoutId);
-                
-                // Error fetching users - show user selection with empty array (will show "Other" option)
-                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                
-                // Only show empty state if timeout hasn't already shown it
-                if (!timeoutFired) {
-                    showUserSelection([]);
-                    userSelectionShown = true;
-                }
-                // If timeout already fired, UI is already shown - don't update again
-            });
-    }).catch(() => {
-        // Clear timeout on error
-        clearTimeout(timeoutId);
-        
-        // Error generating fingerprint - show user selection with empty array
-        toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-        
-        // Only show empty state if timeout hasn't already shown it
-        if (!timeoutFired) {
-            showUserSelection([]);
+    // Check for registered users
+    fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
+        .then((response) => {
+            const users = extractUsersFromResponse(response);
+            
+            // Clear timeout since we got the data
+            clearTimeout(timeoutId);
+            
+            registeredUsers = users;
+            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+            
+            // Always show user selection - update UI even if timeout already fired
+            // This handles the case where timeout showed empty state, but now we have real data
+            if (timeoutFired && users && users.length > 0) {
+                // Timeout already fired, but we got users - update the UI with real data
+                showUserSelection(users);
+            } else {
+                // Normal case - show user selection
+                showUserSelection(users);
+            }
             userSelectionShown = true;
-        }
-        // If timeout already fired, UI is already shown - don't update again
-    });
+        })
+        .catch((error) => {
+            // Log error details
+            console.error('checkRegisteredUsers: Error fetching registered users:', error);
+            
+            // Clear timeout on error
+            clearTimeout(timeoutId);
+            
+            // Error fetching users - show user selection with empty array (will show "Other" option)
+            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+            
+            // Only show empty state if timeout hasn't already shown it
+            if (!timeoutFired) {
+                showUserSelection([]);
+                userSelectionShown = true;
+            }
+            // If timeout already fired, UI is already shown - don't update again
+        });
 }
 
 /**
@@ -805,6 +764,23 @@ function showDuplicateDeviceToast(message, email, username, deviceName) {
     }
 }
 
+/**
+ * Fetch registered users and show selection (used by duplicate-device error flows)
+ */
+function fetchAndShowRegisteredUsers() {
+    ensureDeviceUidInForms();
+    fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
+        .then((response) => {
+            registeredUsers = extractUsersFromResponse(response);
+            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+            showUserSelection(registeredUsers);
+        })
+        .catch(() => {
+            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+            showUserSelection(registeredUsers || []);
+        });
+}
+
 // Handle form submissions
 function setupFormHandlers() {
     // Password login modal form - handle with AJAX to keep modal open on errors
@@ -814,10 +790,10 @@ function setupFormHandlers() {
             e.preventDefault();
             const form = e.target;
             
-            // Ensure fingerprint is set
-            if (deviceFingerprint) {
-                const fingerprintInput = document.getElementById('passwordLoginModalFingerprint');
-                if (fingerprintInput) fingerprintInput.value = deviceFingerprint;
+            // Ensure device_uid is set
+            if (deviceUid) {
+                const deviceUidInput = document.getElementById('passwordLoginModalDeviceUid');
+                if (deviceUidInput) deviceUidInput.value = deviceUid;
             }
             
             // Ensure device_name is set to the password-only login flag for password-only login
@@ -903,6 +879,9 @@ function setupFormHandlers() {
                     // This is the response object {data, headers, xhr}, extract the actual data
                     responseData = response.data;
                 }
+                
+                // Persist durable device UID from successful responses
+                applyDeviceUidFromResponse(responseData);
                 
                 // Check content type to handle redirects
                 const contentType = response.xhr?.getResponseHeader?.('content-type') || '';
@@ -1110,39 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 
                     // Fetch registered users to ensure the user from duplicate error is in the array
-                    browserData = refreshBrowserSnapshot(true);
-                    generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-                        deviceFingerprint = fingerprint;
-                        if (setFingerprintInForms) {
-                            setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-                        }
-                        fetchRegisteredUsers?.(fingerprint, registeredUsersRoute, moduleCsrfToken)
-                            .then((response) => {
-                                // Handle response object format from makeRequest
-                                // Extract users from response object if needed
-                                let users = response;
-                                if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-                                    users = response.data;
-                                } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-                                    users = response.data || [];
-                                }
-                                
-                                registeredUsers = Array.isArray(users) ? users : [];
-                                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                                
-                                // Show user selection after fetching users (even if empty, don't redirect)
-                                // Always show user selection - if no users, it will just show "Other" option
-                                showUserSelection(registeredUsers);
-                            })
-                            .catch(() => {
-                                // Error fetching, but still show user selection if we have registeredUsers
-                                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                                
-                                // Always show user selection - if no users, it will just show "Other" option
-                                showUserSelection(registeredUsers || []);
-                                // Don't redirect on error - duplicate error already shown
-                            });
-                    });
+                    fetchAndShowRegisteredUsers();
                 } else {
                     // Generic duplicate error without user info
                     const message = duplicateDeviceError.message || t?.('messages.device_already_registered') || 'Device already registered';
@@ -1154,34 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                     
                     // Still try to fetch and show users if available
-                    browserData = refreshBrowserSnapshot(true);
-                    generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-                        deviceFingerprint = fingerprint;
-                        if (setFingerprintInForms) {
-                            setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-                        }
-                        fetchRegisteredUsers?.(fingerprint, registeredUsersRoute, moduleCsrfToken)
-                            .then((response) => {
-                                // Handle response object format from makeRequest
-                                let users = response;
-                                if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-                                    users = response.data;
-                                } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-                                    users = response.data || [];
-                                }
-                                registeredUsers = Array.isArray(users) ? users : [];
-                                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                                
-                                // Always show user selection - if no users, it will just show "Other" option
-                                showUserSelection(registeredUsers);
-                            })
-                            .catch(() => {
-                                toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                                
-                                // Always show user selection - if no users, it will just show "Other" option
-                                showUserSelection([]);
-                            });
-                    });
+                    fetchAndShowRegisteredUsers();
                 }
                 
                 // Clear duplicate error from body dataset
@@ -1237,75 +1157,55 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedDeviceName = SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME) : null;
             const storedProfilePicture = SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE) : null;
             
-            // Wait for fingerprint to be ready, then restore modal and fetch users
-            browserData = refreshBrowserSnapshot(true);
-            generateDeviceFingerprint?.(browserData, fingerprintApiRoute, moduleCsrfToken).then((fingerprint) => {
-                deviceFingerprint = fingerprint;
-                if (setFingerprintInForms) {
-                    setFingerprintInForms(fingerprint, browserData, capabilitySnapshot);
-                }
-                
-                // Clear restore flag
-                if (SessionConstants) {
-                    sessionStorage.removeItem(SessionConstants.RESTORE_PASSWORD_MODAL);
-                }
-                
-                // Fetch registered users to get email if we only have username (backward compatibility)
-                if (registeredUsersRoute && moduleCsrfToken) {
-                    fetchRegisteredUsers?.(fingerprint, registeredUsersRoute, moduleCsrfToken)
-                        .then((response) => {
-                            // Handle response object format from makeRequest
-                            let users = response;
-                            if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-                                users = response.data;
-                            } else if (response && typeof response === 'object' && !Array.isArray(response) && 'data' in response) {
-                                users = response.data || [];
+            // Ensure device UID is ready, then restore modal and fetch users
+            ensureDeviceUidInForms();
+            
+            // Clear restore flag
+            if (SessionConstants) {
+                sessionStorage.removeItem(SessionConstants.RESTORE_PASSWORD_MODAL);
+            }
+            
+            // Fetch registered users to get email if we only have username (backward compatibility)
+            if (registeredUsersRoute && moduleCsrfToken) {
+                fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
+                    .then((response) => {
+                        registeredUsers = extractUsersFromResponse(response);
+                        
+                        // If we only have username (old session storage), look up email
+                        let email = storedEmail || '';
+                        let username = storedUsername || '';
+                        if (!email && username && registeredUsers.length > 0) {
+                            const user = registeredUsers.find(u => u.username === username);
+                            if (user) {
+                                email = user.email || '';
                             }
-                            registeredUsers = Array.isArray(users) ? users : [];
-                            
-                            // If we only have username (old session storage), look up email
-                            let email = storedEmail || '';
-                            let username = storedUsername || '';
-                            if (!email && username && registeredUsers.length > 0) {
-                                const user = registeredUsers.find(u => u.username === username);
-                                if (user) {
-                                    email = user.email || '';
-                                }
-                            }
-                            
-                            // Hide loading spinner since we have users or know there are none
-                            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                            
-                            // Open modal with stored state
-                            openPasswordLoginModal(email, username, storedDeviceName, storedProfilePicture);
-                        })
-                        .catch(() => {
-                            // Hide loading spinner even on error
-                            toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
-                            
-                            // Open modal anyway (email lookup will fail, but show modal)
-                            openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
-                        });
-                } else {
-                    // No API route, open modal with what we have
-                    openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
-                }
-                
-                // Clear stored state after opening modal
-                if (SessionConstants) {
-                    sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_EMAIL);
-                    sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_USERNAME);
-                    sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME);
-                    sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE);
-                }
-            }).catch(() => {
-                // Clear restore flag even on error
-                if (SessionConstants) {
-                    sessionStorage.removeItem(SessionConstants.RESTORE_PASSWORD_MODAL);
-                }
-                // Continue with normal flow
-                checkRegisteredUsers();
-            });
+                        }
+                        
+                        // Hide loading spinner since we have users or know there are none
+                        toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+                        
+                        // Open modal with stored state
+                        openPasswordLoginModal(email, username, storedDeviceName, storedProfilePicture);
+                    })
+                    .catch(() => {
+                        // Hide loading spinner even on error
+                        toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
+                        
+                        // Open modal anyway (email lookup will fail, but show modal)
+                        openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
+                    });
+            } else {
+                // No API route, open modal with what we have
+                openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
+            }
+            
+            // Clear stored state after opening modal
+            if (SessionConstants) {
+                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_EMAIL);
+                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_USERNAME);
+                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME);
+                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE);
+            }
         } else {
             // Normal flow - check for registered users
             checkRegisteredUsers();

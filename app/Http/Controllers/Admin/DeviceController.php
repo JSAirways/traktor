@@ -174,14 +174,14 @@ class DeviceController extends Controller
         // Check if this is the current device (the one the admin is logged in from)
         $isCurrentDevice = $this->deviceService->isCurrentDevice($device, $request);
         
-        // Store device fingerprint before deletion to check for other registrations
-        $deviceFingerprint = $device->device_fingerprint;
+        // Store device_uid before deletion to check for other registrations
+        $deviceUid = $device->device_uid;
         
         // If this is the current device, check for other devices BEFORE deleting
         // This ensures we can use the authenticated session for the check
         $hasOtherDevices = false;
-        if ($isCurrentDevice && $deviceFingerprint) {
-            $hasOtherDevices = DeviceRegistration::where('device_fingerprint', $deviceFingerprint)
+        if ($isCurrentDevice && $deviceUid) {
+            $hasOtherDevices = DeviceRegistration::where('device_uid', $deviceUid)
                 ->where('is_active', true)
                 ->where('id', '!=', $device->id) // Exclude the device we're about to delete
                 ->exists();

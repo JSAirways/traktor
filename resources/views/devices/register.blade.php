@@ -17,7 +17,7 @@
 
                 <form method="POST" action="{{ route('device.register') }}" id="deviceRegistrationForm" autocomplete="off">
                     @csrf
-                    <input type="hidden" name="device_fingerprint" id="device_fingerprint">
+                    <input type="hidden" name="device_uid" id="device_uid">
                     <input type="hidden" name="user_agent" id="user_agent">
                     <input type="hidden" name="screen_resolution" id="screen_resolution">
                     <input type="hidden" name="capabilities" id="device_capabilities">
@@ -56,14 +56,13 @@
 
 @push('scripts')
 <script>
-    const fingerprintUtils = (window.Traktor && window.Traktor.Core && window.Traktor.Core.deviceFingerprint)
-        ? window.Traktor.Core.deviceFingerprint
+    const deviceUtils = (window.Traktor && window.Traktor.Core && window.Traktor.Core.deviceIdentity)
+        ? window.Traktor.Core.deviceIdentity
         : null;
 
-    // Collect browser characteristics
     function collectBrowserData() {
-        if (fingerprintUtils && typeof fingerprintUtils.collectBrowserData === 'function') {
-            return fingerprintUtils.collectBrowserData();
+        if (deviceUtils && typeof deviceUtils.collectBrowserData === 'function') {
+            return deviceUtils.collectBrowserData();
         }
 
         return {
@@ -78,173 +77,113 @@
         };
     }
 
-    // Generate device fingerprint via PHP/AJAX API (fallback for browsers without crypto.subtle)
-    // Uses XMLHttpRequest utility for universal browser compatibility
-    function generateFingerprintViaAPI(browserData, apiRoute, csrfToken) {
-        // Use makeRequest utility if available (from utils.js), otherwise inline version
-        if (typeof window.makeRequest === 'function') {
-            return window.makeRequest(apiRoute, {
-                method: 'POST',
-                body: browserData,
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                responseType: 'json'
-            }).then(data => data.fingerprint);
+    function generateUuidV4() {
+        if (deviceUtils && typeof deviceUtils.generateUuidV4 === 'function') {
+            return deviceUtils.generateUuidV4();
         }
-        
-        // Fallback inline implementation for this template
-        return new Promise(function(resolve, reject) {
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', apiRoute, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-            xhr.setRequestHeader('Accept', 'application/json');
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.timeout = 10000;
-            
-            xhr.onload = function() {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        resolve(data.fingerprint);
-                    } catch (e) {
-                        reject(new Error('Invalid JSON response'));
-                    }
-                } else {
-                    reject(new Error('Network response was not ok: ' + xhr.status));
-                }
-            };
-            
-            xhr.onerror = function() {
-                reject(new Error('Network request failed'));
-            };
-            
-            xhr.ontimeout = function() {
-                reject(new Error('Request timeout'));
-            };
-            
-            try {
-                xhr.send(JSON.stringify(browserData));
-            } catch (e) {
-                reject(new Error('Failed to send request: ' + e.message));
-            }
+        if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+            return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = (Math.random() * 16) | 0;
+            var v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
         });
     }
 
-    // Generate device fingerprint (must match PHP DeviceRegistration::generateFingerprint)
-    async function generateDeviceFingerprint(browserData, apiRoute = null, csrfToken = null) {
-        if (fingerprintUtils && typeof fingerprintUtils.generateDeviceFingerprint === 'function') {
-            return fingerprintUtils.generateDeviceFingerprint(browserData, apiRoute, csrfToken);
+    function getOrCreateDeviceUid() {
+        if (deviceUtils && typeof deviceUtils.getOrCreateDeviceUid === 'function') {
+            return deviceUtils.getOrCreateDeviceUid();
         }
 
-        // Use pipe-separated format to match PHP implementation
-        const fingerprintString = [
-            browserData.user_agent || '',
-            browserData.screen_width || '',
-            browserData.screen_height || '',
-            browserData.timezone || '',
-            browserData.language || '',
-            browserData.platform || '',
-            browserData.color_depth || '',
-            browserData.pixel_ratio || '',
-        ].join('|');
-        
-        // Check if crypto.subtle is available (modern browsers)
-        if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
+        var STORAGE_KEY = 'traktor_device_uid';
+        var uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        function readStore(store) {
             try {
-                const encoder = new TextEncoder();
-                const data = encoder.encode(fingerprintString);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            } catch (error) {
-                // Fallback to PHP/AJAX API if crypto.subtle fails
-                if (apiRoute && csrfToken) {
-                    return generateFingerprintViaAPI(browserData, apiRoute, csrfToken);
+                if (!store) return null;
+                var existing = store.getItem(STORAGE_KEY);
+                if (existing && uuidRegex.test(existing)) {
+                    return existing.toLowerCase();
                 }
-                throw new Error('crypto.subtle failed and no API fallback available');
-            }
-        } else {
-            // No crypto.subtle - use PHP/AJAX API directly (iOS 10, PS4 browser)
-            if (apiRoute && csrfToken) {
-                return generateFingerprintViaAPI(browserData, apiRoute, csrfToken);
-            }
-            throw new Error('crypto.subtle not available and no API fallback provided');
+            } catch (e) {}
+            return null;
         }
+
+        function writeStore(store, uid) {
+            try {
+                if (store) store.setItem(STORAGE_KEY, uid);
+            } catch (e) {}
+        }
+
+        var fromLocal = readStore(typeof localStorage !== 'undefined' ? localStorage : null);
+        if (fromLocal) {
+            writeStore(typeof sessionStorage !== 'undefined' ? sessionStorage : null, fromLocal);
+            return fromLocal;
+        }
+
+        var fromSession = readStore(typeof sessionStorage !== 'undefined' ? sessionStorage : null);
+        if (fromSession) {
+            writeStore(typeof localStorage !== 'undefined' ? localStorage : null, fromSession);
+            return fromSession;
+        }
+
+        // Do not read device_uid from the URL (fixation risk).
+        var created = generateUuidV4().toLowerCase();
+        writeStore(typeof localStorage !== 'undefined' ? localStorage : null, created);
+        writeStore(typeof sessionStorage !== 'undefined' ? sessionStorage : null, created);
+        return created;
     }
 
-    // Set fingerprint and browser data in form
-    async function setFingerprintInForms() {
-        const browserData = collectBrowserData();
+    function setDeviceFieldsInForms() {
+        var browserData = collectBrowserData();
         if (!browserData) {
             return;
         }
-        
-        const apiRoute = '{{ route("api.device.generate-fingerprint") }}';
-        const csrfToken = '{{ csrf_token() }}';
-        const urlParams = new URLSearchParams(window.location.search);
-        let fingerprint = urlParams.get('device_fingerprint');
-        const capabilities = (fingerprintUtils && typeof fingerprintUtils.collectCapabilities === 'function')
-            ? fingerprintUtils.collectCapabilities(browserData)
+
+        var deviceUid = getOrCreateDeviceUid();
+        var capabilities = (deviceUtils && typeof deviceUtils.collectCapabilities === 'function')
+            ? deviceUtils.collectCapabilities(browserData)
             : null;
-        
-        if (!fingerprint) {
-            fingerprint = await generateDeviceFingerprint(browserData, apiRoute, csrfToken);
-        }
-        
-        if (fingerprintUtils && typeof fingerprintUtils.setFingerprintInForms === 'function') {
-            fingerprintUtils.setFingerprintInForms(fingerprint, browserData, capabilities);
+
+        if (deviceUtils && typeof deviceUtils.setDeviceUidInForms === 'function') {
+            deviceUtils.setDeviceUidInForms(deviceUid, browserData, capabilities);
             return;
         }
-        
-        const resolution = `${browserData.screen_width || screen.width || 0}x${browserData.screen_height || screen.height || 0}`;
-        
-        setHiddenValue('device_fingerprint', fingerprint);
+
+        var resolution = (browserData.screen_width || screen.width || 0) + 'x' + (browserData.screen_height || screen.height || 0);
+        var capabilityJson = '';
+        try {
+            capabilityJson = capabilities ? JSON.stringify(capabilities) : '';
+        } catch (e) {
+            capabilityJson = '';
+        }
+
+        setHiddenValue('device_uid', deviceUid);
         setHiddenValue('user_agent', browserData.user_agent || navigator.userAgent || '');
         setHiddenValue('screen_resolution', resolution);
-        setHiddenValue('passwordFormFingerprint', fingerprint);
-        setHiddenValue('passwordFormUserAgent', browserData.user_agent || navigator.userAgent || '');
-        setHiddenValue('passwordFormScreenResolution', resolution);
-        setHiddenValue('passwordLoginModalFingerprint', fingerprint);
-        setHiddenValue('passwordLoginModalUserAgent', browserData.user_agent || navigator.userAgent || '');
-        setHiddenValue('passwordLoginModalScreenResolution', resolution);
-        
-        const capabilityJson = serializeCapabilities(capabilities);
         setHiddenValue('device_capabilities', capabilityJson);
-        setHiddenValue('passwordFormCapabilities', capabilityJson);
-        setHiddenValue('passwordLoginModalCapabilities', capabilityJson);
-    }
-
-    function serializeCapabilities(data) {
-        if (!data || typeof data !== 'object') {
-            return '';
-        }
-        try {
-            return JSON.stringify(data);
-        } catch (error) {
-            return '';
-        }
     }
 
     function setHiddenValue(elementId, value) {
-        const element = document.getElementById(elementId);
+        var element = document.getElementById(elementId);
         if (!element) {
             return;
         }
         element.value = (typeof value === 'undefined' || value === null) ? '' : value;
     }
 
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        // Set fingerprint on page load
-        setFingerprintInForms();
-        
-        // Only clear username and password fields if there are no validation errors
-        // If there are errors, keep the old input values so user can see what they typed
+        setDeviceFieldsInForms();
+
         @if(!$errors->has('password') && !$errors->has('username'))
-            const usernameField = document.getElementById('username');
-            const passwordField = document.getElementById('password');
+            var usernameField = document.getElementById('username');
+            var passwordField = document.getElementById('password');
             if (usernameField) {
                 usernameField.value = '';
             }
@@ -252,31 +191,26 @@
                 passwordField.value = '';
             }
         @else
-            // If there are validation errors, focus username field and ensure error styling
-            const usernameField = document.getElementById('username');
-            const passwordField = document.getElementById('password');
-            setTimeout(() => {
-                if (usernameField) {
-                    usernameField.focus();
-                    usernameField.classList.add('is-invalid');
+            var usernameFieldErr = document.getElementById('username');
+            var passwordFieldErr = document.getElementById('password');
+            setTimeout(function () {
+                if (usernameFieldErr) {
+                    usernameFieldErr.focus();
+                    usernameFieldErr.classList.add('is-invalid');
                 }
-                if (passwordField) {
-                    passwordField.classList.add('is-invalid');
+                if (passwordFieldErr) {
+                    passwordFieldErr.classList.add('is-invalid');
                 }
             }, 100);
         @endif
-        
-        // Handle form submission - ensure fingerprint is set before allowing submission
-        const registrationForm = document.getElementById('deviceRegistrationForm');
+
+        var registrationForm = document.getElementById('deviceRegistrationForm');
         if (registrationForm) {
-            registrationForm.addEventListener('submit', async function(e) {
-                // Ensure fingerprint is set before submission
-                await setFingerprintInForms();
-                // Let form submit normally - server handles everything
+            registrationForm.addEventListener('submit', function () {
+                setDeviceFieldsInForms();
             });
         }
     });
 </script>
 @endpush
 @endsection
-

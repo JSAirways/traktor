@@ -1,57 +1,179 @@
 /**
- * Device Fingerprint Utilities
- * Shared functions for device fingerprinting and browser data collection
+ * Device identity utilities
+ * Durable device_uid, browser metadata, and capabilities
  */
 
-import { makeRequest } from './utils.js';
+const DEVICE_UID_STORAGE_KEY = 'traktor_device_uid';
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/**
- * Generates device fingerprint via PHP/AJAX API (fallback for browsers without crypto.subtle)
- * Uses XMLHttpRequest for universal browser compatibility
- * @param {object} browserData - Browser data object from collectBrowserData()
- * @param {string} apiRoute - API route for fingerprint generation
- * @param {string} csrfToken - CSRF token for the request
- * @returns {Promise<string>} Promise that resolves to hexadecimal fingerprint string
- */
-export function generateFingerprintViaAPI(browserData, apiRoute, csrfToken) {
-    if (!apiRoute || !csrfToken) {
-        return Promise.reject(new Error('Missing API route or CSRF token for fingerprint generation'));
+function exposeDeviceIdentityGlobals() {
+    if (typeof window === 'undefined') {
+        return;
     }
-    
-    return makeRequest(apiRoute, {
-        method: 'POST',
-        body: browserData,
-        headers: {
-            'X-CSRF-TOKEN': csrfToken
-        },
-        responseType: 'json'
-    })
-    .then(response => {
-        // Extract data from response object if needed
-        let data = response;
-        if (response && typeof response === 'object' && 'data' in response) {
-            data = response.data;
-        }
-        
-        // Extract fingerprint from response
-        if (data && data.fingerprint) {
-            return data.fingerprint;
-        }
-        
-        // If no fingerprint in expected location, try direct access
-        if (typeof response === 'object' && response.fingerprint) {
-            return response.fingerprint;
-        }
-        
-        throw new Error('Fingerprint not found in API response');
-    })
-    .catch(error => {
-        throw error;
-    });
+    window.Traktor = window.Traktor || {};
+    window.Traktor.Core = window.Traktor.Core || {};
+    window.Traktor.Core.deviceIdentity = {
+        generateUuidV4,
+        isValidDeviceUid,
+        persistDeviceUid,
+        getOrCreateDeviceUid,
+        collectBrowserData,
+        collectCapabilities,
+        serializeCapabilities,
+        setDeviceUidInForms,
+    };
 }
 
 /**
- * Collects browser characteristics for device fingerprinting
+ * Generate a UUID v4 without crypto.randomUUID (PS4 / older WebKit safe).
+ * @returns {string}
+ */
+export function generateUuidV4() {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+        return (
+            hex.slice(0, 8) + '-' +
+            hex.slice(8, 12) + '-' +
+            hex.slice(12, 16) + '-' +
+            hex.slice(16, 20) + '-' +
+            hex.slice(20)
+        );
+    }
+
+    // Math.random fallback for environments without getRandomValues
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+}
+
+export function isValidDeviceUid(uid) {
+    return typeof uid === 'string' && UUID_V4_REGEX.test(uid.trim());
+}
+
+function readLocalStorageUid() {
+    try {
+        if (typeof localStorage === 'undefined') {
+            return null;
+        }
+        const value = localStorage.getItem(DEVICE_UID_STORAGE_KEY);
+        return isValidDeviceUid(value) ? value.trim().toLowerCase() : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeLocalStorageUid(uid) {
+    if (!isValidDeviceUid(uid)) {
+        return false;
+    }
+    try {
+        if (typeof localStorage === 'undefined') {
+            return false;
+        }
+        localStorage.setItem(DEVICE_UID_STORAGE_KEY, uid.trim().toLowerCase());
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Persist a server-confirmed device_uid to localStorage and sessionStorage when available.
+ * @param {string} uid
+ * @returns {string|null}
+ */
+export function persistDeviceUid(uid) {
+    if (!isValidDeviceUid(uid)) {
+        return null;
+    }
+    const normalized = uid.trim().toLowerCase();
+    writeLocalStorageUid(normalized);
+    writeSessionStorageUid(normalized);
+    memoryDeviceUid = normalized;
+    return normalized;
+}
+
+/**
+ * Get or create a durable device_uid.
+ * Order: localStorage → sessionStorage → in-memory (same JS realm) → hidden form → mint.
+ * Never reads device_uid from the URL (avoids fixation).
+ * @returns {string}
+ */
+export function getOrCreateDeviceUid() {
+    const fromLocal = readLocalStorageUid();
+    if (fromLocal) {
+        writeSessionStorageUid(fromLocal);
+        memoryDeviceUid = fromLocal;
+        return fromLocal;
+    }
+
+    const fromSession = readSessionStorageUid();
+    if (fromSession) {
+        writeLocalStorageUid(fromSession);
+        memoryDeviceUid = fromSession;
+        return fromSession;
+    }
+
+    if (memoryDeviceUid && isValidDeviceUid(memoryDeviceUid)) {
+        writeLocalStorageUid(memoryDeviceUid);
+        writeSessionStorageUid(memoryDeviceUid);
+        return memoryDeviceUid;
+    }
+
+    // Prefer a hidden form field already set on the page (same navigation)
+    try {
+        const field = document.getElementById('device_uid')
+            || document.getElementById('passwordLoginModalDeviceUid')
+            || document.getElementById('passwordFormDeviceUid');
+        if (field && isValidDeviceUid(field.value)) {
+            return persistDeviceUid(field.value) || field.value.trim().toLowerCase();
+        }
+    } catch (e) {
+        // ignore DOM access errors
+    }
+
+    const created = generateUuidV4().toLowerCase();
+    return persistDeviceUid(created) || created;
+}
+
+function readSessionStorageUid() {
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return null;
+        }
+        const value = sessionStorage.getItem(DEVICE_UID_STORAGE_KEY);
+        return isValidDeviceUid(value) ? value.trim().toLowerCase() : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeSessionStorageUid(uid) {
+    if (!isValidDeviceUid(uid)) {
+        return false;
+    }
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return false;
+        }
+        sessionStorage.setItem(DEVICE_UID_STORAGE_KEY, uid.trim().toLowerCase());
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/** Same-tab / same-realm fallback when both storages fail (e.g. some PS4 modes). */
+let memoryDeviceUid = null;
+
+/**
+ * Collects browser characteristics for admin display / capabilities
  * @returns {object} Browser data object with user agent, screen, timezone, etc.
  */
 export function collectBrowserData() {
@@ -250,83 +372,28 @@ export function serializeCapabilities(capabilities) {
 }
 
 /**
- * Generates a device fingerprint from browser data using SHA-256
- * Flow: First tries modern approach (crypto.subtle), then falls back to PHP/AJAX API for older devices
- * @param {object} browserData - Browser data object from collectBrowserData()
- * @param {string} [apiRoute] - Optional API route for fingerprint generation (fallback)
- * @param {string} [csrfToken] - Optional CSRF token for API request (fallback)
- * @returns {Promise<string>} Promise that resolves to hexadecimal fingerprint string
- */
-export function generateDeviceFingerprint(browserData, apiRoute = null, csrfToken = null) {
-    const fingerprintString = [
-        browserData.user_agent,
-        browserData.screen_width,
-        browserData.screen_height,
-        browserData.timezone,
-        browserData.language,
-        browserData.platform,
-        browserData.color_depth,
-        browserData.pixel_ratio,
-    ].join('|');
-    
-    // STEP 1: Try modern approach first - crypto.subtle (client-side, no network)
-    if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
-        try {
-            // TextEncoder is natively supported on PS4+
-            const textEncoder = new TextEncoder();
-            return crypto.subtle.digest('SHA-256', textEncoder.encode(fingerprintString))
-                .then(hashBuffer => {
-                    const hashArray = Array.from(new Uint8Array(hashBuffer));
-                    const hashHex = hashArray.map(b => {
-                        return b.toString(16).padStart(2, '0');
-                    }).join('');
-                    return hashHex;
-                })
-                .catch(error => {
-                    // STEP 2: Fallback to PHP/AJAX API if crypto.subtle fails at runtime
-                    if (apiRoute && csrfToken) {
-                        return generateFingerprintViaAPI(browserData, apiRoute, csrfToken);
-                    }
-                    throw new Error('crypto.subtle failed and no API fallback available');
-                });
-        } catch (e) {
-            // STEP 2: Fallback to PHP/AJAX API if crypto.subtle throws synchronously
-            if (apiRoute && csrfToken) {
-                return generateFingerprintViaAPI(browserData, apiRoute, csrfToken);
-            }
-            return Promise.reject(new Error('crypto.subtle not available and no API fallback available'));
-        }
-    } else {
-        // STEP 2: Fallback to PHP/AJAX API if crypto.subtle is not available
-        if (apiRoute && csrfToken) {
-            return generateFingerprintViaAPI(browserData, apiRoute, csrfToken);
-        }
-        return Promise.reject(new Error('crypto.subtle not available and no API fallback provided'));
-    }
-}
-
-/**
- * Sets device fingerprint and browser data in all forms on the page
- * @param {string} fingerprint - The device fingerprint hash
+ * Sets durable device_uid and browser metadata in all forms on the page
+ * @param {string} deviceUid - The durable device UUID
  * @param {object} browserData - Browser data object from collectBrowserData()
  * @param {object} capabilities - Capability object from collectCapabilities()
  * @returns {void}
  */
-export function setFingerprintInForms(fingerprint, browserData, capabilities) {
+export function setDeviceUidInForms(deviceUid, browserData, capabilities) {
     const capabilityJson = serializeCapabilities(capabilities);
     const resolution = `${browserData.screen_width}x${browserData.screen_height}`;
+    const uid = persistDeviceUid(deviceUid) || deviceUid;
 
-    setInputValue('device_fingerprint', fingerprint);
+    setInputValue('device_uid', uid);
     setInputValue('user_agent', browserData.user_agent);
     setInputValue('screen_resolution', resolution);
     setInputValue('device_capabilities', capabilityJson);
 
-    setInputValue('passwordLoginModalFingerprint', fingerprint);
+    setInputValue('passwordLoginModalDeviceUid', uid);
     setInputValue('passwordLoginModalUserAgent', browserData.user_agent);
     setInputValue('passwordLoginModalScreenResolution', resolution);
     setInputValue('passwordLoginModalCapabilities', capabilityJson);
 
-    setInputValue('passwordFormFingerprint', fingerprint);
+    setInputValue('passwordFormDeviceUid', uid);
     setInputValue('passwordFormUserAgent', browserData.user_agent);
     setInputValue('passwordFormScreenResolution', resolution);
     setInputValue('passwordFormCapabilities', capabilityJson);
@@ -340,3 +407,5 @@ function setInputValue(elementId, value) {
 
     element.value = typeof value === 'undefined' || value === null ? '' : value;
 }
+
+exposeDeviceIdentityGlobals();

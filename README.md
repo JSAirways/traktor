@@ -98,8 +98,9 @@ Key settings in `.env`:
 | Variable | Description |
 |----------|-------------|
 | `DB_*` | Database connection |
-| `DEVICE_TOKEN_TTL` | Device token lifetime in minutes |
-| `DEVICE_COOKIE_EXPIRATION` | Device cookie lifetime in minutes |
+| `DEVICE_TOKEN_TTL` | Device token lifetime in minutes (default 129600 = 90 days) |
+| `DEVICE_TOKEN_GRACE_MINUTES` | After expiry, still allow refresh within this window (default 129600) |
+| `DEVICE_COOKIE_EXPIRATION` | Device cookie lifetime in minutes; should be ≥ token TTL + grace (default 259200) |
 
 See `.env.example` for the full list.
 

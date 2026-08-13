@@ -136,22 +136,20 @@ class WelcomeController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // Check if device fingerprint was ever registered (even if logged out)
-        // The fingerprint check will be done client-side via JavaScript, but we can check
-        // if there's a fingerprint in the request (from query param or session)
-        $deviceFingerprint = $request->input('device_fingerprint') 
-            ?? $request->session()->get('device_fingerprint');
+        // Check if durable device_uid was ever registered (even if logged out)
+        $deviceUid = $request->input('device_uid')
+            ?? $this->deviceService->getDeviceUidFromCookie($request);
         
         $hasPreviousRegistrations = false;
-        if ($deviceFingerprint) {
-            $hasPreviousRegistrations = $this->deviceService->hasDeviceFingerprintRegistrations($deviceFingerprint);
+        if ($deviceUid) {
+            $hasPreviousRegistrations = $this->deviceService->hasDeviceUidRegistrations($deviceUid);
         }
 
         // Get available profile pictures from profile-pictures/cats for random selection
         $catGifs = $this->profilePictureService->getPicturesByCategory('cats');
 
         // Show user selection or registration option
-        // JavaScript will handle checking fingerprint and redirecting if needed
+        // JavaScript will handle checking device_uid and listing known accounts
         return view('welcome.index', [
             'catGifs' => $catGifs,
             'hasPreviousRegistrations' => $hasPreviousRegistrations,
@@ -186,7 +184,7 @@ class WelcomeController extends Controller
                 
                 // If device exists for this user, refresh its token
                 $device = $this->deviceService->getDeviceFromCookie($request);
-                if ($device && $device->parent_id === $user->id) {
+                if ($device && $device->parent_user_id === $user->id) {
                     // Refresh token for this device (may have been expired)
                     $this->deviceService->refreshDeviceToken($device);
                 }

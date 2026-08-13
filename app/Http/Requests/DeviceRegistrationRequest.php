@@ -28,6 +28,10 @@ class DeviceRegistrationRequest extends FormRequest
             return [
                 'email' => ['required', 'string', 'email'],
                 'password' => ['required', 'string'],
+                'device_uid' => ['nullable', 'uuid'],
+                'user_agent' => ['nullable', 'string'],
+                'screen_resolution' => ['nullable', 'string', 'max:50'],
+                'capabilities' => ['nullable', 'string'],
             ];
         }
         
@@ -36,7 +40,7 @@ class DeviceRegistrationRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
             'device_name' => ['required', 'string', 'max:255'],
-            'device_fingerprint' => ['nullable', 'string', 'max:64'],
+            'device_uid' => ['nullable', 'uuid'],
             'user_agent' => ['nullable', 'string'],
             'screen_resolution' => ['nullable', 'string', 'max:50'],
             'capabilities' => ['nullable', 'string'],

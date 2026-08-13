@@ -334,6 +334,44 @@ class YouTubeService
     }
 
     /**
+     * Derive an auto-generated channel playlist ID from a channel ID.
+     *
+     * YouTube uses fixed prefixes (not officially documented in Data API v3):
+     * - UU   = all public uploads (videos + Shorts + live)
+     * - UULF = long-form videos only
+     * - UUSH = Shorts only
+     * - UULV = live streams only
+     *
+     * relatedPlaylists.uploads returns UU. For channel import we prefer UULF so
+     * Shorts never appear — duration/title heuristics are unreliable (Shorts can
+     * exceed 60s and often omit #shorts).
+     */
+    public function deriveChannelPlaylistId(string $channelId, string $prefix = 'UULF'): ?string
+    {
+        if (!str_starts_with($channelId, 'UC') || strlen($channelId) < 3) {
+            return null;
+        }
+
+        return $prefix . substr($channelId, 2);
+    }
+
+    /**
+     * Normalize channel payload: prefer long-form videos playlist (UULF) over UU uploads.
+     */
+    protected function formatChannelInfo(array $item): array
+    {
+        $channelId = $item['id'];
+        $officialUploads = $item['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+
+        return [
+            'channel_id' => $channelId,
+            'title' => $item['snippet']['title'],
+            // Prefer UULF (videos only); fall back to official UU uploads playlist
+            'uploads_playlist_id' => $this->deriveChannelPlaylistId($channelId, 'UULF') ?? $officialUploads,
+        ];
+    }
+
+    /**
      * Resolve channel input (URL, handle, username, or ID) to channel ID
      * Supports various formats:
      * - Channel ID: UCxxxxxx
@@ -400,12 +438,7 @@ class YouTubeService
             throw new Exception("Channel not found.");
         }
 
-        $item = $data['items'][0];
-        return [
-            'channel_id' => $item['id'],
-            'title' => $item['snippet']['title'],
-            'uploads_playlist_id' => $item['contentDetails']['relatedPlaylists']['uploads'] ?? null,
-        ];
+        return $this->formatChannelInfo($data['items'][0]);
     }
 
     /**
@@ -428,13 +461,8 @@ class YouTubeService
         }
 
         $data = $response->json();
-        $item = $data['items'][0];
-        
-        return [
-            'channel_id' => $item['id'],
-            'title' => $item['snippet']['title'],
-            'uploads_playlist_id' => $item['contentDetails']['relatedPlaylists']['uploads'] ?? null,
-        ];
+
+        return $this->formatChannelInfo($data['items'][0]);
     }
 
     /**
@@ -459,12 +487,7 @@ class YouTubeService
             throw new Exception("Channel not found.");
         }
 
-        $item = $data['items'][0];
-        return [
-            'channel_id' => $item['id'],
-            'title' => $item['snippet']['title'],
-            'uploads_playlist_id' => $item['contentDetails']['relatedPlaylists']['uploads'] ?? null,
-        ];
+        return $this->formatChannelInfo($data['items'][0]);
     }
 
     /**
@@ -552,6 +575,7 @@ class YouTubeService
                 }
             }
 
+            // Shorts are excluded by using the UULF (long-form) playlist — see formatChannelInfo()
             return [
                 'items' => $videos,
                 'nextPageToken' => $data['nextPageToken'] ?? null,

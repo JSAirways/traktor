@@ -520,6 +520,7 @@ class ContentService
                 }
                 
                 // Convert items to the format expected by import logic
+                // (Shorts already excluded when uploads_playlist_id is UULF)
                 foreach ($result['items'] as $item) {
                     $allItems[] = [
                         'type' => $item['type'],

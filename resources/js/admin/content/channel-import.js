@@ -20,6 +20,7 @@ class ChannelImporter {
         this.existingVideoIds = new Set(); // Use Set for O(1) lookups
         this.existingPlaylistIds = new Set(); // Use Set for O(1) lookups
         this.existingIdsLoaded = false; // Track if IDs have been loaded
+        this.existingIdsLoadPromise = null; // Deduplicate concurrent loads
         
         this.initializeElements();
         this.attachEventListeners();
@@ -124,8 +125,9 @@ class ChannelImporter {
             this.modal.addEventListener('hidden.bs.modal', () => {
                 this.resetModal();
             });
-            // Load existing IDs when modal opens
+            // Load existing IDs fresh whenever the modal opens
             this.modal.addEventListener('show.bs.modal', () => {
+                this.resetExistingIds();
                 this.loadExistingIds();
             });
         }
@@ -174,8 +176,8 @@ class ChannelImporter {
     }
     
     /**
-     * Load existing content IDs for the selected user (called once)
-     * Uses Sets for O(1) lookup performance
+     * Load existing content IDs for the selected user (called once per modal open)
+     * Uses Sets for O(1) lookup performance. Concurrent callers share one request.
      */
     async loadExistingIds() {
         const userIdSelect = document.querySelector('select[name="user_id"]');
@@ -185,24 +187,34 @@ class ChannelImporter {
         if (!userId || this.existingIdsLoaded) {
             return; // Already loaded or no user selected
         }
-        
-        try {
-            const response = await makeRequest('/admin/content/existing-ids', {
-                method: 'POST',
-                body: { user_id: parseInt(userId, 10) }
-            });
-            
-            const result = response.data || response;
-            if (result?.success) {
-                // Convert arrays to Sets for O(1) lookup performance
-                this.existingVideoIds = new Set(result.video_ids || []);
-                this.existingPlaylistIds = new Set(result.playlist_ids || []);
-                this.existingIdsLoaded = true;
-            }
-        } catch (error) {
-            console.warn('Failed to load existing IDs, will skip import checking', error);
-            // Continue without existing IDs - items just won't be marked as imported
+
+        if (this.existingIdsLoadPromise) {
+            return this.existingIdsLoadPromise;
         }
+
+        this.existingIdsLoadPromise = (async () => {
+            try {
+                const response = await makeRequest('/admin/content/existing-ids', {
+                    method: 'POST',
+                    body: { user_id: parseInt(userId, 10) }
+                });
+                
+                // Flatten nested success macro: { success, data: { video_ids, playlist_ids } }
+                const result = this.extractResponseData(response);
+                if (result?.success) {
+                    this.existingVideoIds = new Set(result.video_ids || []);
+                    this.existingPlaylistIds = new Set(result.playlist_ids || []);
+                    this.existingIdsLoaded = true;
+                }
+            } catch (error) {
+                console.warn('Failed to load existing IDs, will skip import checking', error);
+                // Continue without existing IDs - items just won't be marked as imported
+            } finally {
+                this.existingIdsLoadPromise = null;
+            }
+        })();
+
+        return this.existingIdsLoadPromise;
     }
     
     /**
@@ -235,6 +247,7 @@ class ChannelImporter {
         this.existingVideoIds.clear();
         this.existingPlaylistIds.clear();
         this.existingIdsLoaded = false;
+        this.existingIdsLoadPromise = null;
     }
     
     /**
@@ -296,12 +309,8 @@ class ChannelImporter {
      * @returns {object} Processed result with marked items
      */
     processResponseResult(result) {
-        // Ensure items is an array before processing
         const items = Array.isArray(result.items) ? result.items : [];
-        
-        // Mark items as imported
         result.items = this.markItemsAsImported(items);
-        
         return result;
     }
     
@@ -613,18 +622,16 @@ class ChannelImporter {
         
         const itemKey = item.video_id || item.playlist_id;
         const isSelected = itemKey in this.selectedItems;
-        const isImported = item.is_imported === true; // Check imported flag
+        const isImported = item.is_imported === true;
         
         const card = document.createElement('div');
-        let cardClasses = 'card h-100';
+        const cardClasses = ['card', 'h-100', 'channel-import-item'];
         if (isImported) {
-            cardClasses += ' opacity-75'; // Visual indication
-            cardClasses += ' border-success'; // Success border for imported items (priority)
+            cardClasses.push('channel-import-item--imported');
         } else if (isSelected) {
-            cardClasses += ' border-success'; // Success border for selected items
+            cardClasses.push('border-success');
         }
-        card.className = cardClasses;
-        card.style.cursor = isImported ? 'not-allowed' : 'pointer';
+        card.className = cardClasses.join(' ');
         
         const itemId = item.video_id || item.playlist_id;
         const itemType = item.type;
@@ -643,31 +650,28 @@ class ChannelImporter {
         if (item.duration && formatDuration) {
             durationHtml = `<p class="card-text small text-muted mb-0 mt-1">${formatDuration(item.duration)}</p>`;
         }
+
+        // Already-added items: no checkbox — muted card only
+        const checkboxHtml = isImported
+            ? ''
+            : `<div class="position-absolute top-0 end-0 p-2">
+                <input type="checkbox" class="form-check-input" ${isSelected ? 'checked' : ''}
+                data-item-id="${itemId}" data-item-type="${itemType}">
+            </div>`;
         
-        // Imported badge
-        const importedBadge = isImported ? '<div class="position-absolute top-0 start-0 p-1"><span class="badge bg-success">Imported</span></div>' : '';
-        
-        card.innerHTML = `<div class="position-relative">
-            <img src="${item.thumbnail_url}" class="card-img-top" alt="${escapedTitle}" 
-                 style="${isImported ? 'filter: grayscale(50%);' : ''}">
-            <div class="position-absolute top-0 end-0 p-2">
-            <input type="checkbox" class="form-check-input" ${isSelected ? 'checked' : ''} 
-            ${isImported ? 'disabled' : ''} 
-            data-item-id="${itemId}" data-item-type="${itemType}">
-            </div>
-            ${importedBadge}
+        card.innerHTML = `<div class="position-relative channel-import-item__media">
+            <img src="${item.thumbnail_url}" class="card-img-top" alt="${escapedTitle}">
+            ${checkboxHtml}
             ${playlistBadge}
             </div>
             <div class="card-body p-2">
-            <p class="card-text small text-truncate mb-0" title="${escapedTitle}">
+            <p class="card-text small text-truncate mb-0 channel-import-item__title" title="${escapedTitle}">
             ${escapedTitle}
             </p>
             ${durationHtml}
             </div>`;
         
-        // Only allow selection if not imported
         if (!isImported) {
-            // Click handler for card (toggle selection)
             card.addEventListener('click', (e) => {
                 if (e.target.type !== 'checkbox') {
                     const checkbox = card.querySelector('input[type="checkbox"]');
@@ -676,14 +680,12 @@ class ChannelImporter {
                 }
             });
             
-            // Checkbox change handler
             const checkbox = card.querySelector('input[type="checkbox"]');
             checkbox.addEventListener('change', (e) => {
                 e.stopPropagation();
                 const videoCount = itemType === 'playlist' ? (item.video_count || 0) : 1;
                 this.toggleItemSelection(itemId, itemType, item.title, e.target.checked, videoCount);
                 
-                // Update card border
                 if (e.target.checked) {
                     card.classList.add('border-success');
                 } else {

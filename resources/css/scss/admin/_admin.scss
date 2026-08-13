@@ -269,3 +269,31 @@ body.admin-layout .offcanvas-backdrop {
     }
 }
 
+/* Channel import modal — selectable vs already-added items */
+.channel-import-item {
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.channel-import-item:not(.channel-import-item--imported):hover {
+    box-shadow: 0 0.125rem 0.35rem rgba(0, 0, 0, 0.08);
+}
+
+.channel-import-item--imported {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.42;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.channel-import-item--imported .channel-import-item__media img {
+    filter: grayscale(1);
+}
+
+.channel-import-item--imported .channel-import-item__title,
+.channel-import-item--imported .card-text {
+    color: var(--bs-secondary);
+}
+

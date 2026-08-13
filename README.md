@@ -2,14 +2,24 @@
 
 Traktor is a curated video gallery platform where parents manage YouTube content for their children, and kids browse it through a simple, kid-friendly interface.
 
+## Documentation
+
+Full product and developer docs live in [`docs/`](docs/README.md):
+
+- [Technical brief](docs/TECHNICAL_BRIEF.md) — capabilities, roles, features
+- [Architecture](docs/ARCHITECTURE.md) — device identity, sessions, services
+- [Development](docs/DEVELOPMENT.md) — setup, env, workflows
+- [Schema notes](docs/SCHEMA_NOTES.md) — tables and local bootstrap
+
 ## Features
 
 - **Parent accounts** — Register devices, curate videos and playlists, and manage child profiles
-- **Child galleries** — Personalized, easy-to-navigate video browsing
+- **Child galleries** — Personalized, easy-to-navigate video browsing with optional PIN unlock
 - **YouTube integration** — Import and organize content from YouTube channels and playlists
-- **Device registration** — Signed device tokens with capability detection for tablets, TVs, and browsers
+- **Device registration** — Durable `device_uid` plus signed device tokens for tablets, TVs, consoles, and browsers
 - **Progressive Web App** — Installable with offline caching via service worker
-- **Admin panel** — User management, registration approval, and system configuration
+- **Admin panel** — User management, registration approval, analytics, and system configuration
+- **i18n** — English and German
 
 ## Tech Stack
 
@@ -62,9 +72,9 @@ npm run build
 php artisan serve
 ```
 
-For asset hot-reloading during development, run `npm run dev` in a separate terminal.
+For asset hot-reloading during development, run `npm run dev` in a separate terminal. For serve + queue + Vite together, use `composer dev`.
 
-6. Configure your YouTube API key (see below).
+6. Configure your YouTube API key (see below) and create/approve a parent or admin account (see [docs/SCHEMA_NOTES.md](docs/SCHEMA_NOTES.md)).
 
 ## YouTube API Key
 
@@ -101,8 +111,10 @@ Key settings in `.env`:
 | `DEVICE_TOKEN_TTL` | Device token lifetime in minutes (default 129600 = 90 days) |
 | `DEVICE_TOKEN_GRACE_MINUTES` | After expiry, still allow refresh within this window (default 129600) |
 | `DEVICE_COOKIE_EXPIRATION` | Device cookie lifetime in minutes; should be ≥ token TTL + grace (default 259200) |
+| `PIN_LENGTH` | Child view PIN length (default 4) |
+| `VIEWING_SESSION_TIMEOUT` | Viewing unlock lifetime in **seconds** (default 86400) |
 
-See `.env.example` for the full list.
+See `.env.example` and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full list.
 
 ## Author
 

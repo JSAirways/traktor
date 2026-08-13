@@ -35,13 +35,15 @@ class UserRegistrationNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $approveUrl = URL::signedRoute('admin.users.approve-from-email', ['user' => $this->user->id]);
-        $rejectUrl = URL::signedRoute('admin.users.reject-from-email', ['user' => $this->user->id]);
+        $user = $this->user->fresh() ?? $this->user;
+        $approveUrl = URL::signedRoute('admin.users.approve-from-email', ['user' => $user->id]);
+        $rejectUrl = URL::signedRoute('admin.users.reject-from-email', ['user' => $user->id]);
 
         return (new MailMessage)
             ->subject(__('emails.user_registration_notification'))
             ->view('emails.user-registration-notification', [
-                'user' => $this->user,
+                'user' => $user,
+                'howHeardAbout' => $user->how_heard_about,
                 'approveUrl' => $approveUrl,
                 'rejectUrl' => $rejectUrl,
             ]);

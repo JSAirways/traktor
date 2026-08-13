@@ -15,7 +15,9 @@ Route::post('/register-device', [App\Http\Controllers\DeviceController::class, '
 // Account registration routes (public registration - guests only)
 Route::middleware('guest')->group(function () {
     Route::get('/register-account', [App\Http\Controllers\Auth\RegisteredUserController::class, 'registerAccount'])->name('register-account');
-    Route::post('/register-account', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store'])->name('register-account.store');
+    Route::post('/register-account', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store'])
+        ->middleware('throttle:5,15')
+        ->name('register-account.store');
 });
 Route::post('/device/logout', [App\Http\Controllers\DeviceController::class, 'logout'])->name('device.logout');
 Route::post('/api/device/registered-users', [App\Http\Controllers\DeviceController::class, 'getRegisteredUsers'])->name('api.device.registered-users');

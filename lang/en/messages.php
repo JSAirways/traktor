@@ -62,6 +62,8 @@ return [
     'email_taken' => 'This email is already taken.',
     'username_required' => 'Username is required.',
     'username_max' => 'The username may not be greater than :max characters.',
+    'how_heard_about_required' => 'Please tell us how you heard about this app.',
+    'registration_submitted' => 'Registration submitted successfully! Your account is pending admin approval.',
     'url_required' => 'URL is required.',
     'unauthorized_access' => 'Unauthorized access. Please authenticate to continue.',
     'authentication_failed' => 'Invalid username or PIN. Please try again.',

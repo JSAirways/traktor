@@ -7,7 +7,8 @@
     'placeholder' => null,
     'error' => null,
     'autofocus' => false,
-    'clearValue' => false
+    'clearValue' => false,
+    'maxlength' => null,
 ])
 
 @php
@@ -42,6 +43,7 @@
         @if($inputValue && $inputValue !== '') value="{{ $inputValue }}" @endif
         @if($required) required @endif
         @if($autofocus) autofocus @endif
+        @if($maxlength) maxlength="{{ $maxlength }}" @endif
     >
     <label for="{{ $name }}">
         {{ $displayLabel }}
@@ -58,4 +60,3 @@
         @enderror
     </div>
 </div>
-

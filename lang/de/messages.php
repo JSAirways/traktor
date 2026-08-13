@@ -62,6 +62,8 @@ return [
     'email_taken' => 'Diese E-Mail-Adresse ist bereits vergeben.',
     'username_required' => 'Benutzername ist erforderlich.',
     'username_max' => 'Der Benutzername darf maximal :max Zeichen lang sein.',
+    'how_heard_about_required' => 'Bitte teile uns mit, wie du von dieser App erfahren hast.',
+    'registration_submitted' => 'Registrierung erfolgreich eingereicht! Dein Konto wartet auf Freigabe durch einen Administrator.',
     'url_required' => 'URL ist erforderlich.',
     'unauthorized_access' => 'Nicht autorisierter Zugriff. Bitte authentifizieren Sie sich, um fortzufahren.',
     'authentication_failed' => 'Ungültiger Benutzername oder PIN. Bitte versuchen Sie es erneut.',

@@ -152,6 +152,7 @@ return [
     'add_user' => 'Add User',
     'all' => 'All',
     'back_to_users' => 'Back to Users',
+    'how_heard_about' => 'How they heard about the app',
     'no_pending_registrations' => 'No pending registrations at this time.',
     'select_all' => 'Select All',
     'approve_selected' => 'Approve Selected',

@@ -150,6 +150,7 @@ return [
     'add_user' => 'Benutzer hinzufügen',
     'all' => 'Alle',
     'back_to_users' => 'Zurück zu Benutzern',
+    'how_heard_about' => 'Wie sie von der App erfahren haben',
     'no_pending_registrations' => 'Derzeit keine ausstehenden Registrierungen.',
     'select_all' => 'Alle auswählen',
     'approve_selected' => 'Ausgewählte genehmigen',

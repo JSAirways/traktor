@@ -30,6 +30,7 @@ class User extends Authenticatable implements HasLocalePreference
         'approved_by',
         'rejection_reason',
         'locale',
+        'how_heard_about',
         'parental_controls',
         'channel_order',
         'show_all_content_section',

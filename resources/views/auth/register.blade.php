@@ -66,6 +66,15 @@
             <label for="password_confirmation">{{ __('common.confirm_password') }} *</label>
         </div>
 
+        <!-- How did you hear about this app? -->
+        <div class="form-floating mb-3">
+            <input id="how_heard_about" class="form-control @error('how_heard_about') is-invalid @enderror" type="text" name="how_heard_about" value="{{ old('how_heard_about') }}" placeholder=" " required maxlength="500" autocomplete="off" />
+            <label for="how_heard_about">{{ __('forms.how_heard_about') }} *</label>
+            @error('how_heard_about')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
         <!-- Locale Selection -->
         @if(isset($supportedLocales) && count($supportedLocales) > 1)
             <div class="form-floating mb-3">

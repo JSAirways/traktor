@@ -32,6 +32,7 @@ return [
     'user_registration_name' => 'Name',
     'user_registration_username' => 'Benutzername',
     'user_registration_email' => 'E-Mail',
+    'user_registration_how_heard' => 'Wie hast du von dieser App erfahren?',
     'user_registration_approve_button' => 'Genehmigen',
     'user_registration_reject_button' => 'Ablehnen',
     'user_registration_fallback' => 'Wenn Sie Probleme beim Klicken auf die Schaltflächen haben, kopieren Sie die unten stehenden URLs und fügen Sie sie in Ihren Webbrowser ein:',

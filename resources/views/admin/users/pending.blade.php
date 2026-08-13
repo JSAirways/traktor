@@ -46,7 +46,7 @@
                     </th>
                     <th>{{ __('common.username') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('common.email') }}</th>
-                    <th class="d-none d-md-table-cell">{{ __('common.name') }}</th>
+                    <th class="d-none d-md-table-cell">{{ __('admin.how_heard_about') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('admin.registered') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('common.language') }}</th>
                     <th class="text-end">{{ __('admin.actions') }}</th>
@@ -65,7 +65,13 @@
                             </div>
                         </td>
                         <td class="align-middle d-none d-md-table-cell">{{ $user->email }}</td>
-                        <td class="align-middle d-none d-md-table-cell">{{ $user->username }}</td>
+                        <td class="align-middle d-none d-md-table-cell">
+                            @if($user->how_heard_about)
+                                <span title="{{ $user->how_heard_about }}">{{ \Illuminate\Support\Str::limit($user->how_heard_about, 60) }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
                         <td class="align-middle d-none d-md-table-cell">
                             <small>{{ $user->created_at->format('Y-m-d H:i') }}</small>
                         </td>

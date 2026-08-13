@@ -20,8 +20,9 @@ Route::middleware('guest')->group(function () {
     // Registration routes
     Route::get('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])
         ->name('register');
-    
-    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
+
+    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store'])
+        ->middleware('throttle:5,15');
 
     // Account status pages (accessible without auth)
     Route::get('pending-approval', function () {

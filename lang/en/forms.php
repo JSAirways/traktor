@@ -5,6 +5,7 @@ return [
     'register_account' => 'Register Account',
     'register_new_account' => 'Register new account',
     'register_device' => 'Register Device',
+    'how_heard_about' => 'How did you hear about this app?',
     'reset_password' => 'Reset Password',
     'send_password_reset_link' => 'Send Password Reset Link',
     'enter_email_for_reset' => 'Enter your email address and we\'ll send you a password reset link.',

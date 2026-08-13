@@ -50,6 +50,14 @@
                         :required="true"
                     />
 
+                    <x-forms.form-field 
+                        name="how_heard_about" 
+                        :label="__('forms.how_heard_about')" 
+                        :required="true"
+                        :value="old('how_heard_about')"
+                        maxlength="500"
+                    />
+
                     <x-forms.profile-picture-selector 
                         name="cat_gif"
                         :currentValue="old('cat_gif', '')"

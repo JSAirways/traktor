@@ -13,7 +13,8 @@
     <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
         <p style="font-size: 14px; color: #212529; margin: 0 0 8px 0;"><strong>{{ __('emails.user_registration_name') }}:</strong> {{ $user->username }}</p>
         <p style="font-size: 14px; color: #212529; margin: 0 0 8px 0;"><strong>{{ __('emails.user_registration_username') }}:</strong> {{ $user->username }}</p>
-        <p style="font-size: 14px; color: #212529; margin: 0 0 0 0;"><strong>{{ __('emails.user_registration_email') }}:</strong> {{ $user->email }}</p>
+        <p style="font-size: 14px; color: #212529; margin: 0 0 8px 0;"><strong>{{ __('emails.user_registration_email') }}:</strong> {{ $user->email }}</p>
+        <p style="font-size: 14px; color: #212529; margin: 0 0 0 0;"><strong>{{ __('emails.user_registration_how_heard') }}:</strong> {{ $howHeardAbout ?? $user->how_heard_about ?? '—' }}</p>
     </div>
     
     <!-- Action Buttons -->

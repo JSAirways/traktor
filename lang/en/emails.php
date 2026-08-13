@@ -32,6 +32,7 @@ return [
     'user_registration_name' => 'Name',
     'user_registration_username' => 'Username',
     'user_registration_email' => 'Email',
+    'user_registration_how_heard' => 'How did you hear about this app?',
     'user_registration_approve_button' => 'Approve',
     'user_registration_reject_button' => 'Reject',
     'user_registration_fallback' => 'If you\'re having trouble clicking the buttons, copy and paste the URLs below into your web browser:',

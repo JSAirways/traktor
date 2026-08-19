@@ -8,6 +8,7 @@ return [
     'logging_in' => 'Logging in...',
     'log_in_as' => 'Log in as :username',
     'invalid_pin' => 'Invalid username or PIN. Please try again.',
+    'too_many_pin_attempts' => 'Too many PIN attempts. Please try again in :minutes minutes.',
     'invalid_credentials' => 'Invalid username or password. Please try again.',
     
     'forgot_password' => 'Forgot Password?',
@@ -22,7 +23,10 @@ return [
     'no_pin_required' => 'No PIN required for this account.',
     'pin_required' => 'PIN is required.',
     'access_videos' => 'Access Videos',
+    'enter_admin_pin_description' => 'Enter your 4-digit PIN to open Settings on this registered device.',
     'admin_access' => 'Settings',
     'access_admin' => 'Open Settings',
+    'use_password_instead' => 'Use password instead',
+    'use_pin_instead' => 'Use PIN instead',
 ];
 

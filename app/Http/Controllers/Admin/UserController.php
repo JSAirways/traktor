@@ -466,6 +466,7 @@ class UserController extends Controller
         $user = auth()->user();
         $validated = $request->validated();
         $usePin = $this->getPinToggleState($request);
+        $useAdminPin = $this->getAdminPinToggleState($request);
 
         // Map cat_gif to profile_picture with category
         $profileData = $this->mapProfilePicture($validated['cat_gif'] ?? null);
@@ -490,6 +491,7 @@ class UserController extends Controller
 
         // Handle PIN update
         $this->handlePinUpdate($user, $usePin, $validated['pin'] ?? null);
+        $this->handleNamedPinUpdate($user, $useAdminPin, $validated['admin_pin'] ?? null, 'admin_pin');
 
         return redirect()->route('admin.dashboard')
             ->with('success', __('admin.profile_updated_successfully'));

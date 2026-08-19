@@ -6,7 +6,7 @@
 import { getElementJson, getDatasetJson } from '../../core/utils.js';
 
 // PIN Field Toggle
-function togglePinField(pinWrapperId, pinInputId, pinAsteriskId, usePinCheckboxId, currentPin) {
+function togglePinField(pinWrapperId, pinInputId, pinAsteriskId, usePinCheckboxId, currentPin, pinName = 'pin') {
     const usePin = document.getElementById(usePinCheckboxId)?.checked;
     const pinWrapper = document.getElementById(pinWrapperId);
     const pinInput = document.getElementById(pinInputId);
@@ -15,7 +15,7 @@ function togglePinField(pinWrapperId, pinInputId, pinAsteriskId, usePinCheckboxI
     if (usePin) {
         if (pinWrapper) pinWrapper.style.display = '';
         if (pinInput) {
-            pinInput.setAttribute('name', 'pin');
+            pinInput.setAttribute('name', pinName);
             pinInput.setAttribute('required', 'required');
             // If PIN field is empty and we have a current PIN, restore it
             if (!pinInput.value && currentPin) {
@@ -34,7 +34,7 @@ function togglePinField(pinWrapperId, pinInputId, pinAsteriskId, usePinCheckboxI
 }
 
 // Generate PIN
-function generatePin(pinInputId, usePinCheckboxId) {
+function generatePin(pinInputId, usePinCheckboxId, pinName = 'pin') {
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
     const pinInput = document.getElementById(pinInputId);
     if (pinInput) {
@@ -42,7 +42,7 @@ function generatePin(pinInputId, usePinCheckboxId) {
         // Ensure name attribute is set if toggle is on
         const usePinCheckbox = document.getElementById(usePinCheckboxId);
         if (usePinCheckbox?.checked) {
-            pinInput.setAttribute('name', 'pin');
+            pinInput.setAttribute('name', pinName);
         }
     }
 }
@@ -92,7 +92,8 @@ function initializePinFields() {
                     config.pinInputId,
                     config.pinAsteriskId,
                     config.usePinCheckboxId,
-                    config.currentPin || ''
+                    config.currentPin || '',
+                    config.pinName || 'pin'
                 );
             }
         }
@@ -158,7 +159,8 @@ function initializePinFieldHandlers() {
                     config.pinInputId,
                     config.pinAsteriskId,
                     config.usePinCheckboxId,
-                    config.currentPin || ''
+                    config.currentPin || '',
+                    config.pinName || 'pin'
                 );
             }
         }
@@ -172,7 +174,7 @@ function initializePinFieldHandlers() {
             const button = e.target.closest('[data-generate-pin]') || e.target;
             const config = getDatasetJson(button, 'generatePin', {});
             if (config?.pinInputId) {
-                generatePin(config.pinInputId, config.usePinCheckboxId);
+                generatePin(config.pinInputId, config.usePinCheckboxId, config.pinName || 'pin');
             }
         }
     });

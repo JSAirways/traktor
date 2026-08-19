@@ -8,6 +8,7 @@ return [
     'logging_in' => 'Wird angemeldet...',
     'log_in_as' => 'Anmelden als :username',
     'invalid_pin' => 'Ungültiger Benutzername oder PIN. Bitte versuchen Sie es erneut.',
+    'too_many_pin_attempts' => 'Zu viele PIN-Versuche. Bitte versuchen Sie es in :minutes Minuten erneut.',
     'invalid_credentials' => 'Ungültiger Benutzername oder Passwort. Bitte versuchen Sie es erneut.',
     
     'forgot_password' => 'Passwort vergessen?',
@@ -20,7 +21,10 @@ return [
     'no_pin_required' => 'Für dieses Konto ist keine PIN erforderlich.',
     'pin_required' => 'PIN ist erforderlich.',
     'access_videos' => 'Auf Videos zugreifen',
+    'enter_admin_pin_description' => 'Geben Sie Ihre 4-stellige PIN ein, um die Einstellungen auf diesem registrierten Geraet zu oeffnen.',
     'admin_access' => 'Einstellungen',
     'access_admin' => 'Einstellungen öffnen',
+    'use_password_instead' => 'Stattdessen Passwort verwenden',
+    'use_pin_instead' => 'Stattdessen PIN verwenden',
 ];
 

@@ -28,25 +28,14 @@
                 <form id="pinEntryForm">
                     @csrf
                     <input type="hidden" name="username" id="pinEntryUsername" value="">
-                    
-                    <div class="mb-3">
-                        <input type="text" 
-                               class="form-control pin-entry-input @error('pin') is-invalid @enderror" 
-                               id="pinEntryPin" 
-                               name="pin" 
-                               maxlength="4" 
-                               pattern="[0-9]{4}" 
-                               inputmode="numeric"
-                               autocomplete="off"
-                               required 
-                               autofocus>
-                    </div>
-                    <div id="pinEntryError" class="invalid-feedback d-none mb-3"></div>
-                    <div id="pinEntryLoading" class="text-center mt-3" style="display: none;">
-                        <div class="spinner-border text-success" role="status">
-                            <span class="visually-hidden">Validating...</span>
-                        </div>
-                    </div>
+
+                    <x-forms.pin-input
+                        inputId="pinEntryPin"
+                        inputName="pin"
+                        errorId="pinEntryError"
+                        loadingId="pinEntryLoading"
+                        :autofocus="true"
+                    />
                 </form>
             </div>
         </div>

@@ -6,9 +6,12 @@ High-level data model for developers. Prefer migrations under `database/migratio
 
 ### `users`
 
-- Parents: `parent_id` null, `role` `user` or `admin`, email/password, `account_status`
-- Children: `parent_id` set, typically no real email login; optional encrypted `view_pin`
-- Profile: `username`, `slug`, `profile_picture` / legacy `cat_gif`, `locale`, `is_viewable`, `appears_in_profile_selection`
+- Parents: `parent_id` null, `role` `user` or `admin`, email/password, `account_status`, optional `how_heard_about`
+- Children: `parent_id` set, typically no real email login; optional encrypted `view_pin` (presence implies PIN required — no separate `pin_enabled` column)
+- Parent convenience auth: optional encrypted `admin_pin` for backend access from the registered-device Settings modal
+- Profile: `username`, `slug`, `profile_picture`, `locale`, `is_viewable`, `appears_in_profile_selection`
+- Gallery UI: `channel_order` (JSON), `show_all_content_section` (bool), `hidden_channels` (JSON)
+- Cache: `cache_version` (timestamp) — bumping invalidates versioned user/content caches
 - Optional JSON `parental_controls` (not enforced in viewing paths yet)
 
 ### `device_registrations`
@@ -30,8 +33,8 @@ High-level data model for developers. Prefer migrations under `database/migratio
 
 ### Analytics
 
-- `video_watch_events` — granular player events (nullable `device_registration_id`)
-- `watch_sessions` — session aggregates
+- `video_watch_events` — granular player events (nullable `device_registration_id`); sessions derived server-side from events
+- `watch_sessions` — session aggregates (populated from events)
 
 ### `settings`
 
@@ -55,5 +58,10 @@ High-level data model for developers. Prefer migrations under `database/migratio
 |-----------|--------|
 | `2026_08_13_160000_add_device_uid_…` | Adds `device_uid`, unique with parent; **deletes existing device rows** (tester cutover) |
 | `2026_08_13_170000_drop_device_fingerprint_…` | Removes retired `device_fingerprint` column |
+| `2025_12_08_233308_create_video_watch_events_table` | Analytics event storage |
+| `2025_12_08_233309_create_watch_sessions_table` | Analytics session aggregates |
+| `2025_11_18_103606_add_cache_version_to_users_table` | Cache versioning on users |
+| `2025_11_17_231253_add_channel_order_and_show_all_content_…` | Per-profile gallery channel layout |
+| `2026_08_19_210000_add_admin_pin_to_users_table` | Adds separate parent admin-access PIN storage |
 
 Do not re-run wipe migrations against production without an explicit backup and approval.

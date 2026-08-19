@@ -24,22 +24,49 @@
                         :title="__('auth.admin_access')"
                     />
                 </div>
-                <form method="POST" action="{{ route('admin.verify-password') }}" id="adminPasswordForm">
-                    @csrf
-                    
-                    <div class="form-floating mb-3">
-                        <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                               id="adminPassword" name="password" placeholder=" " required autofocus
-                               value="{{ old('password', '') }}">
-                        <label for="adminPassword">{{ __('common.password') }}</label>
-                        @error('password')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
-                        <div id="adminPasswordError" class="invalid-feedback d-none"></div>
+                @if($parentHasAdminPin ?? false)
+                    <div id="adminAccessPinPanel">
+                        <p class="text-center text-light small mb-3">{{ __('auth.enter_admin_pin_description') }}</p>
+                        <form id="adminPinForm">
+                            @csrf
+                            <x-forms.pin-input
+                                inputId="adminPin"
+                                inputName="pin"
+                                errorId="adminPinError"
+                                loadingId="adminPinLoading"
+                                :autofocus="true"
+                            />
+                        </form>
+                        <button type="button" class="btn btn-outline-light w-100 mt-3" id="showAdminPasswordFallback">
+                            {{ __('auth.use_password_instead') }}
+                        </button>
                     </div>
+                @endif
 
-                    <button type="submit" class="btn btn-success w-100">{{ __('auth.access_admin') }}</button>
-                </form>
+                <div id="adminAccessPasswordPanel" class="@if($parentHasAdminPin ?? false) d-none @endif">
+                    <form method="POST" action="{{ route('admin.verify-password') }}" id="adminPasswordForm">
+                        @csrf
+
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control @error('password') is-invalid @enderror"
+                                   id="adminPassword" name="password" placeholder=" " @if(!($parentHasAdminPin ?? false)) required autofocus @endif
+                                   value="{{ old('password', '') }}">
+                            <label for="adminPassword">{{ __('common.password') }}</label>
+                            @error('password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <div id="adminPasswordError" class="invalid-feedback d-none"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">{{ __('auth.access_admin') }}</button>
+                    </form>
+
+                    @if($parentHasAdminPin ?? false)
+                        <button type="button" class="btn btn-link text-light w-100 mt-3" id="showAdminPinPanel">
+                            {{ __('auth.use_pin_instead') }}
+                        </button>
+                    @endif
+                </div>
             </div>
         </div>
     </div>

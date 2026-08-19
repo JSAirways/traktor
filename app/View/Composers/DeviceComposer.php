@@ -30,6 +30,7 @@ class DeviceComposer
         $view->with('device', $device);
         $view->with('hasRegisteredDevice', $device && $device->isActive());
         $view->with('parentUser', $parent);
+        $view->with('parentHasAdminPin', $parent?->hasAdminPin() ?? false);
         $view->with('deviceNeedsCapabilityRefresh', $device && empty($device->capabilities));
     }
 }

@@ -36,6 +36,7 @@ class UpdateProfileRequest extends FormRequest
     {
         $user = auth()->user();
         $usePin = $this->getPinToggleState();
+        $useAdminPin = $this->getAdminPinToggleState();
         
         $rules = [
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
@@ -43,10 +44,11 @@ class UpdateProfileRequest extends FormRequest
             'password' => ['nullable', 'string', 'min:8'],
             'cat_gif' => ['nullable', 'string', 'max:255'],
             'appears_in_profile_selection' => ['nullable', 'boolean'],
-            'use_pin' => ['nullable'],
         ];
 
-        return $this->addPinValidationRules($rules, $usePin);
+        $rules = $this->addPinValidationRules($rules, $usePin);
+
+        return $this->addNamedPinValidationRules($rules, $useAdminPin, 'use_admin_pin', 'admin_pin');
     }
 
     /**
@@ -63,6 +65,9 @@ class UpdateProfileRequest extends FormRequest
             'pin.required' => __('messages.pin_required'),
             'pin.size' => __('messages.pin_size'),
             'pin.regex' => __('messages.pin_format'),
+            'admin_pin.required' => __('messages.pin_required'),
+            'admin_pin.size' => __('messages.pin_size'),
+            'admin_pin.regex' => __('messages.pin_format'),
         ];
     }
 }

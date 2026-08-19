@@ -10,10 +10,26 @@ trait HandlesPinToggle
      */
     protected function getPinToggleState($request): bool
     {
-        return $request->has('use_pin') && 
-               ($request->input('use_pin') === '1' || 
-                $request->input('use_pin') === 'on' || 
-                $request->boolean('use_pin'));
+        return $this->getNamedPinToggleState($request, 'use_pin');
+    }
+
+    /**
+     * Get admin PIN toggle state from request.
+     */
+    protected function getAdminPinToggleState($request): bool
+    {
+        return $this->getNamedPinToggleState($request, 'use_admin_pin');
+    }
+
+    /**
+     * Get toggle state for a named PIN checkbox field.
+     */
+    protected function getNamedPinToggleState($request, string $toggleField): bool
+    {
+        return $request->has($toggleField) &&
+            ($request->input($toggleField) === '1' ||
+             $request->input($toggleField) === 'on' ||
+             $request->boolean($toggleField));
     }
 
     /**
@@ -45,24 +61,37 @@ trait HandlesPinToggle
      */
     protected function handlePinUpdate($user, bool $usePin, ?string $pin = null): void
     {
+        $this->handleNamedPinUpdate($user, $usePin, $pin, 'view_pin');
+    }
+
+    /**
+     * Handle an arbitrary PIN column update based on toggle state.
+     *
+     * @param \App\Models\User $user The user to update
+     * @param bool $usePin Whether PIN toggle is enabled
+     * @param string|null $pin The PIN value (if provided)
+     * @param string $pinColumn The encrypted PIN column on users
+     */
+    protected function handleNamedPinUpdate($user, bool $usePin, ?string $pin = null, string $pinColumn = 'view_pin'): void
+    {
+        $getter = $pinColumn === 'admin_pin' ? 'getAdminPin' : 'getViewPin';
+        $setter = $pinColumn === 'admin_pin' ? 'setAdminPin' : 'setViewPin';
+        $hasPinGetter = $pinColumn === 'admin_pin' ? 'hasAdminPin' : 'hasStoredPin';
+
         if ($usePin) {
             if (!empty($pin)) {
                 // Update PIN if provided and different
-                $currentPin = $user->getViewPin();
+                $currentPin = $user->{$getter}();
                 if ($pin !== $currentPin) {
-                    $user->setViewPin($pin);
+                    $user->{$setter}($pin);
                 }
-            } else {
-                // Generate PIN if toggle is on but no PIN provided and user has no stored PIN
-                if (!$user->hasStoredPin()) {
-                    $user->generateViewPin();
-                }
-                // Otherwise, keep existing PIN (preserves PIN when toggle is re-enabled)
+            } elseif (! $user->{$hasPinGetter}()) {
+                // Toggle enabled without a stored PIN and no new value submitted — leave disabled.
             }
         } else {
             // Toggle is OFF - clear the PIN to disable it
-            if ($user->hasStoredPin()) {
-                $user->update(['view_pin' => null]);
+            if ($user->{$hasPinGetter}()) {
+                $user->update([$pinColumn => null]);
             }
         }
     }

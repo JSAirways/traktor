@@ -23,6 +23,7 @@ class User extends Authenticatable implements HasLocalePreference
         'profile_picture_category',
         'parent_id',
         'view_pin',
+        'admin_pin',
         'is_viewable',
         'appears_in_profile_selection',
         'account_status',
@@ -41,6 +42,8 @@ class User extends Authenticatable implements HasLocalePreference
     protected $hidden = [
         'password',
         'remember_token',
+        'view_pin',
+        'admin_pin',
     ];
 
     protected $casts = [
@@ -203,6 +206,52 @@ class User extends Authenticatable implements HasLocalePreference
     public function hasStoredPin(): bool
     {
         return !empty($this->view_pin);
+    }
+
+    public function generateAdminPin(int $length = 4): string
+    {
+        $pin = str_pad((string) random_int(10 ** ($length - 1), (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+        $this->setAdminPin($pin);
+
+        return $pin;
+    }
+
+    public function setAdminPin(string $pin): void
+    {
+        $this->admin_pin = \Crypt::encryptString($pin);
+        $this->save();
+    }
+
+    public function getAdminPin(): ?string
+    {
+        if (empty($this->admin_pin)) {
+            return null;
+        }
+
+        try {
+            return \Crypt::decryptString($this->admin_pin);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    public function verifyAdminPin(string $pin): bool
+    {
+        if (empty($this->admin_pin)) {
+            return false;
+        }
+
+        try {
+            $storedPin = \Crypt::decryptString($this->admin_pin);
+            return $storedPin === $pin;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function hasAdminPin(): bool
+    {
+        return !empty($this->admin_pin);
     }
 
     /**

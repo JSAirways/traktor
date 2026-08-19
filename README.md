@@ -10,6 +10,9 @@ Full product and developer docs live in [`docs/`](docs/README.md):
 - [Architecture](docs/ARCHITECTURE.md) — device identity, sessions, services
 - [Development](docs/DEVELOPMENT.md) — setup, env, workflows
 - [Schema notes](docs/SCHEMA_NOTES.md) — tables and local bootstrap
+- [CSRF token guide](docs/CSRF_TOKEN_GUIDE.md) — AJAX CSRF handling
+
+When committing or pushing, keep docs in sync with code — see [Documentation on commit & push](docs/DEVELOPMENT.md#documentation-on-commit--push).
 
 ## Features
 
@@ -114,7 +117,7 @@ Key settings in `.env`:
 | `PIN_LENGTH` | Child view PIN length (default 4) |
 | `VIEWING_SESSION_TIMEOUT` | Viewing unlock lifetime in **seconds** (default 86400) |
 
-See `.env.example` and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full list.
+See [`.env.example`](.env.example) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full list.
 
 ## Author
 

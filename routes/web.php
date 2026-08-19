@@ -48,10 +48,10 @@ Route::post('/api/analytics/session/end', [App\Http\Controllers\Api\AnalyticsCon
 // Access control (viewing sessions)
 // PIN entry is handled via modal on gallery page, not a separate route
 Route::post('/view/validate', [App\Http\Controllers\ViewingSessionController::class, 'validatePin'])
-    ->middleware('rate.limit.pin')
+    ->middleware('rate.limit.pin:view')
     ->name('view.validate');
 Route::post('/api/view/validate-pin', [App\Http\Controllers\ViewingSessionController::class, 'validatePinAjax'])
-    ->middleware('rate.limit.pin')
+    ->middleware('rate.limit.pin:view')
     ->name('api.view.validate-pin');
 Route::get('/view/{slug}', [App\Http\Controllers\ViewingSessionController::class, 'directAccess'])
     ->where('slug', '[a-z0-9_-]+')
@@ -73,7 +73,7 @@ Route::get('/csrf-token', function() {
 // Admin password verification route (no auth middleware - uses device registration)
 // CSRF protection excluded - device registration + password + rate limiting provide sufficient security
 Route::post('/admin/verify-password', [App\Http\Controllers\WelcomeController::class, 'verifyAdminPassword'])
-    ->middleware('throttle:5,15') // 5 attempts per 15 minutes
+    ->middleware(['rate.limit.pin:admin', 'rate.limit.pin:admin-password'])
     ->name('admin.verify-password');
 
 // Email action routes (signed URLs for security, no auth middleware)

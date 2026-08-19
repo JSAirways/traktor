@@ -1,17 +1,12 @@
 /**
- * Admin Password Modal JavaScript
- * Handles admin password modal initialization and behavior
- * 
- * Note: Bootstrap automatically handles:
- * - Modal opening via data-bs-toggle="modal" and data-bs-target attributes
- * - Focus management (using autofocus attribute in HTML)
- * - Backdrop creation and management
- * - Keyboard handling (ESC key)
- * - Trigger button tracking (via event.relatedTarget)
+ * Admin access modal JavaScript.
+ * Supports password auth and, when enabled, a 4-digit admin PIN with password fallback.
  */
 
 import { setupModalAccessibility, setupModalFocus, setupModalInputReset, openModal } from '../../core/modal-utils.js';
-import { isFullscreen, exitFullscreen, getCsrfToken, makeRequest, getTranslation, updateCsrfToken } from '../../core/utils.js';
+import { isFullscreen, exitFullscreen, makeRequest, getTranslation, updateCsrfToken } from '../../core/utils.js';
+import { LoadingStateManager } from '../../core/loading-state-manager.js';
+import { initializePinInput } from '../../core/pin-input.js';
 
 /**
  * Exits fullscreen and waits for it to complete
@@ -40,72 +35,28 @@ function exitFullscreenAsync() {
 document.addEventListener('DOMContentLoaded', () => {
     const adminPasswordModal = document.getElementById('adminPasswordModal');
     if (!adminPasswordModal) return;
-    
-    // Setup accessibility (includes blurring focused elements inside and outside modal)
-    if (setupModalAccessibility) {
-        setupModalAccessibility('adminPasswordModal');
-    }
-    
-    // Setup autofocus (Bootstrap handles this via autofocus attribute, but ensure it works)
-    if (setupModalFocus) {
-        setupModalFocus('adminPasswordModal', '#adminPassword', 100);
-    }
-    
-    // Setup form reset with error preservation (for server-side validation errors)
-    if (setupModalInputReset) {
-        setupModalInputReset('adminPasswordModal', 'adminPassword');
-    }
-    
-    // Get form reference
+
+    setupModalAccessibility?.('adminPasswordModal');
+    setupModalFocus?.('adminPasswordModal', '#adminPassword', 100);
+    setupModalFocus?.('adminPasswordModal', '#adminPin', 100);
+    setupModalInputReset?.('adminPasswordModal', 'adminPassword');
+
     const adminPasswordForm = document.getElementById('adminPasswordForm');
-    
-    /**
-     * Refresh CSRF token from server and update both form and meta tag
-     * This ensures we always have a fresh token, even if the page is cached
-     * @returns {Promise<void>} Promise that resolves when token is refreshed
-     */
-    async function refreshCsrfToken() {
-        if (!adminPasswordForm || !makeRequest) return;
-        
-        try {
-            const response = await makeRequest('/csrf-token', {
-                method: 'GET'
-            });
-            
-            // Extract data from response object
-            const data = response.data || response; // Backward compatibility fallback
-            const newToken = data?.token || data?.data?.token;
-            if (newToken) {
-                // Update form input
-                const csrfInput = adminPasswordForm.querySelector('input[name="_token"]');
-                if (csrfInput) {
-                    csrfInput.value = newToken;
-                }
-                
-                // Update meta tag (for future use)
-                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-                if (csrfMeta) {
-                    csrfMeta.content = newToken;
-                }
-            }
-        } catch (error) {
-            // Fallback to existing token if fetch fails
-            if (getCsrfToken) {
-                const existingToken = getCsrfToken();
-                if (existingToken) {
-                    const csrfInput = adminPasswordForm.querySelector('input[name="_token"]');
-                    if (csrfInput) {
-                        csrfInput.value = existingToken;
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * Show error message
-     */
-    function showError(message) {
+    const adminPinInput = document.getElementById('adminPin');
+    const adminPinPanel = document.getElementById('adminAccessPinPanel');
+    const adminPasswordPanel = document.getElementById('adminAccessPasswordPanel');
+    const showPasswordFallbackButton = document.getElementById('showAdminPasswordFallback');
+    const showPinPanelButton = document.getElementById('showAdminPinPanel');
+    const pinLoadingManager = adminPinInput && LoadingStateManager ? new LoadingStateManager({
+        loadingElementId: 'adminPinLoading',
+        errorElementId: 'adminPinError',
+        loadingShowClass: 'block',
+        loadingHideClass: 'none',
+        errorShowClass: 'block',
+        errorHideClass: 'd-none',
+    }) : null;
+
+    function showPasswordError(message) {
         const passwordField = document.getElementById('adminPassword');
         if (passwordField) {
             passwordField.classList.add('is-invalid');
@@ -120,10 +71,35 @@ document.addEventListener('DOMContentLoaded', () => {
             errorDiv.classList.add('d-block');
         }
     }
-    
-    // Exit fullscreen before showing modal (modals are not visible in fullscreen)
+
+    function resetPasswordError() {
+        const passwordField = document.getElementById('adminPassword');
+        const errorDiv = document.getElementById('adminPasswordError');
+        passwordField?.classList.remove('is-invalid');
+        if (errorDiv) {
+            errorDiv.classList.add('d-none');
+            errorDiv.textContent = '';
+        }
+    }
+
+    function resetPinState() {
+        if (adminPinInput) {
+            adminPinInput.value = '';
+            adminPinInput.disabled = false;
+            adminPinInput.classList.remove('is-invalid');
+        }
+        pinLoadingManager?.reset();
+    }
+
+    function toggleAccessMode(mode) {
+        const showPin = mode === 'pin';
+        adminPinPanel?.classList.toggle('d-none', !showPin);
+        adminPasswordPanel?.classList.toggle('d-none', showPin);
+        resetPasswordError();
+        resetPinState();
+    }
+
     adminPasswordModal.addEventListener('show.bs.modal', async (event) => {
-        // Close options menu offcanvas if open
         const optionsMenuOffcanvas = document.getElementById('optionsMenuOffcanvas');
         if (optionsMenuOffcanvas && typeof window !== 'undefined' && window.bootstrap?.Offcanvas) {
             const offcanvasInstance = window.bootstrap.Offcanvas.getInstance(optionsMenuOffcanvas);
@@ -171,81 +147,67 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 150);
         }
     }, { once: false });
-    
-    // Handle form submission via AJAX to prevent 419 errors
+
+    adminPasswordModal.addEventListener('shown.bs.modal', () => {
+        if (adminPinPanel && !adminPinPanel.classList.contains('d-none')) {
+            adminPinInput?.focus();
+            return;
+        }
+        document.getElementById('adminPassword')?.focus();
+    });
+
+    adminPasswordModal.addEventListener('hidden.bs.modal', () => {
+        toggleAccessMode(adminPinPanel ? 'pin' : 'password');
+    });
+
+    showPasswordFallbackButton?.addEventListener('click', () => toggleAccessMode('password'));
+    showPinPanelButton?.addEventListener('click', () => toggleAccessMode('pin'));
+
     if (adminPasswordForm && makeRequest) {
         adminPasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const form = e.target;
-            const passwordField = document.getElementById('adminPassword');
             const submitButton = form.querySelector('button[type="submit"]');
             const originalButtonText = submitButton?.textContent || '';
-            
-            // Clear previous errors
-            if (passwordField) {
-                passwordField.classList.remove('is-invalid');
-            }
-            const errorDiv = document.getElementById('adminPasswordError');
-            if (errorDiv) {
-                errorDiv.classList.add('d-none');
-                errorDiv.textContent = '';
-            }
-            
-            // Disable submit button
+
+            resetPasswordError();
             if (submitButton) {
                 submitButton.disabled = true;
                 const loggingInText = getTranslation?.('auth.logging_in', 'Logging in...') || 'Logging in...';
                 submitButton.textContent = loggingInText;
             }
-            
-            // Create form data (include CSRF token like password login modal)
-            // Note: Even though route is excluded, including token ensures compatibility
-            // and works the same way as the password login modal
+
             const formData = new FormData(form);
-            
-            // Ensure CSRF token is in headers (makeRequest will add it automatically, but be explicit)
-            const csrfToken = getCsrfToken();
-            
-            // Submit via AJAX
+
             try {
                 const response = await makeRequest(form.action, {
                     method: 'POST',
                     body: formData,
                     responseType: 'json',
+                    skipCsrf: true,
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken || '',
                         'Accept': 'application/json'
                     }
                 });
-                
-                // Extract data from response object
+
                 const data = response.data || response; // Backward compatibility fallback
-                
-                // Update CSRF token if provided in response (session was regenerated)
                 if (data?.csrf_token) {
                     updateCsrfToken(data.csrf_token);
                 }
-                
-                // Success - redirect to admin dashboard
+
                 const redirectUrl = data?.redirect || data?.data?.redirect || '/admin';
                 window.location.href = redirectUrl;
             } catch (error) {
-                // Re-enable submit button
                 if (submitButton) {
                     submitButton.disabled = false;
                     submitButton.textContent = originalButtonText;
                 }
-                
-                // Handle different error types
+
                 let errorMessage = 'An error occurred. Please try again.';
-                
-                // CSRF token refresh failed (automatic retry should handle this, but handle gracefully if it fails)
                 if (error?.csrfRefreshFailed) {
                     errorMessage = error.message || 'Session expired. Please refresh the page and try again.';
-                }
-                // Validation errors (422)
-                else if (error?.status === 422) {
+                } else if (error?.status === 422) {
                     try {
                         const errorData = error.responseData || (error.response ? JSON.parse(error.response) : {});
                         if (errorData.errors?.password) {
@@ -260,39 +222,79 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         errorMessage = getTranslation?.('auth.invalid_password', 'Invalid password. Please try again.') || 'Invalid password. Please try again.';
                     }
-                }
-                // Network errors
-                else if (error?.status === 0 || error?.message?.includes('Network')) {
+                } else if (error?.status === 0 || error?.message?.includes('Network')) {
                     errorMessage = getTranslation?.('messages.request_timeout', 'Network error. Please check your connection and try again.') || 'Network error. Please check your connection and try again.';
-                }
-                // Generic errors
-                else {
+                } else {
                     if (error?.message) {
                         errorMessage = error.message;
                     } else {
                         errorMessage = getTranslation?.('common.error_occurred', errorMessage) || errorMessage;
                     }
                 }
-                
-                showError(errorMessage);
+
+                showPasswordError(errorMessage);
             }
         });
     }
-    
-    // Check if there are validation errors and show modal programmatically
+
+    if (adminPinInput) {
+        const verifyAdminUrl = adminPasswordForm?.action || '/admin/verify-password';
+
+        initializePinInput({
+            input: adminPinInput,
+            onReset: () => pinLoadingManager?.hideError(),
+            onComplete: async (pin) => {
+                resetPasswordError();
+                pinLoadingManager?.showLoading();
+                pinLoadingManager?.hideError();
+                adminPinInput.disabled = true;
+
+                try {
+                    const response = await makeRequest(verifyAdminUrl, {
+                        method: 'POST',
+                        body: { pin },
+                        responseType: 'json',
+                        skipCsrf: true,
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    const data = response.data || response;
+                    if (data?.csrf_token) {
+                        updateCsrfToken(data.csrf_token);
+                    }
+
+                    window.location.href = data?.redirect || data?.data?.redirect || '/admin';
+                } catch (error) {
+                    adminPinInput.disabled = false;
+                    pinLoadingManager?.hideLoading();
+                    adminPinInput.value = '';
+                    adminPinInput.classList.add('is-invalid');
+                    adminPinInput.focus();
+
+                    let errorMessage = getTranslation?.('auth.invalid_pin', 'Invalid PIN. Please try again.') || 'Invalid PIN. Please try again.';
+                    try {
+                        const errorData = error.responseData || (error.response ? JSON.parse(error.response) : {});
+                        if (errorData.errors?.pin) {
+                            errorMessage = Array.isArray(errorData.errors.pin) ? errorData.errors.pin[0] : errorData.errors.pin;
+                        } else if (errorData.message) {
+                            errorMessage = errorData.message;
+                        }
+                    } catch (_ignored) {
+                    }
+
+                    pinLoadingManager?.showError(errorMessage, 'auth.invalid_pin', errorMessage);
+                }
+            },
+        });
+    }
+
     const adminPasswordField = document.getElementById('adminPassword');
     if (adminPasswordField?.classList.contains('is-invalid')) {
-        // Exit fullscreen if needed before opening modal programmatically
         exitFullscreenAsync().then(() => {
-            // Open modal programmatically with focus callback
             if (openModal) {
                 openModal('adminPasswordModal', () => {
-                    const passwordField = document.getElementById('adminPassword');
-                    if (passwordField) {
-                        setTimeout(() => {
-                            passwordField.focus();
-                        }, 100);
-                    }
+                    toggleAccessMode('password');
+                    document.getElementById('adminPassword')?.focus();
                 });
             }
         });

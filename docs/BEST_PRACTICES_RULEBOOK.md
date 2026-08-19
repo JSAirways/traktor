@@ -37,14 +37,16 @@ resources/js/
 │   ├── asset-version-checker.js  # Asset version detection and cache clearing
 │   ├── cache-version-monitor.js  # Cache version monitoring and automatic page reload
 │   ├── constants.js      # JavaScript constants (TimingConstants)
-│   ├── device-fingerprint.js  # Device fingerprinting
+│   ├── device-identity.js  # Device UID, capabilities, PS4-safe UUID
 │   ├── device-api.js     # Device API integration
 │   ├── error-handler.js  # Standardized error handling
 │   ├── loading-state-manager.js  # Loading state management
 │   ├── modal-utils.js    # Modal utilities
-│   ├── analytics-tracker.js  # Analytics event tracking
+│   ├── analytics-tracker.js  # Analytics event tracking (event-based)
+│   ├── wake-lock.js      # Screen wake lock during playback
+│   ├── orientation.js    # Orientation / layout helpers
 │   ├── i18n.js          # Internationalization
-│   └── namespace.js     # Global namespace setup (backward compatibility only)
+│   └── namespace.js     # Global Traktor namespace (legacy compat; uses IIFE)
 ├── modules/
 │   ├── video-player.js   # Video player functionality
 │   ├── gallery.js        # Gallery view management
@@ -59,10 +61,9 @@ resources/js/
 │   ├── accounts/
 │   │   └── forgot-password.js
 │   ├── galleries/
-│   │   ├── index.js      # Gallery index page
-│   │   └── show.js       # Gallery show page initialization
+│   │   └── index.js      # Gallery page (/{slug}/gallery)
 │   ├── pins/
-│   │   └── entry.js      # PIN entry modal
+│   │   └── entry.js      # PIN modal logic (loaded on profiles/selection)
 │   ├── player/
 │   │   └── show.js       # Player page initialization
 │   ├── profiles/
@@ -78,6 +79,8 @@ resources/js/
     │   └── channel-import.js  # Channel import functionality
     ├── dashboard/
     │   └── index.js      # Analytics dashboard UI
+    ├── settings/
+    │   └── quota-monitor.js  # YouTube quota monitoring UI
     ├── shared/           # Admin shared utilities
     │   ├── admin-forms.js
     │   ├── admin-layout.js
@@ -95,10 +98,11 @@ resources/js/
 - Admin resources are separated in `admin/` namespace
 - Shared utilities across resources go in `resources/shared/`
 - `app.js` should only handle initialization and high-level coordination
-- **All modules use native ES6 `import`/`export` syntax**
-- **No IIFE wrappers or global namespace assignments**
+- **Prefer native ES6 `import`/`export` syntax** for new and touched modules
+- **Avoid new IIFE wrappers or global namespace assignments** — legacy `window.Traktor` attachments remain in some modules during transition (`namespace.js`, `device-identity.js`, etc.)
 - **Relative import paths** (e.g., `../../core/utils.js`)
 - **PS4 browser minimum requirement** (ES2020 support)
+- **Legacy:** `galleries/show.js` exists but is unused; the gallery route uses `galleries/index.js`
 
 ### Blade Component Structure
 
@@ -116,7 +120,9 @@ resources/views/
 │   ├── dashboard/
 │   │   ├── index.blade.php  # Main analytics dashboard
 │   │   ├── user.blade.php   # User-specific dashboard view
-│   │   └── users.blade.php  # Admin user list view
+│   │   ├── users.blade.php  # Admin user list view
+│   │   ├── _panel.blade.php # Dashboard panel partial
+│   │   └── _scripts.blade.php
 │   ├── content/
 │   │   └── index.blade.php
 │   ├── devices/
@@ -138,13 +144,14 @@ resources/views/
 │       └── show-pin.blade.php
 ├── components/            # Reusable components
 │   ├── admin/
-│   │   └── content/
-│   │       ├── bulk-actions-toolbar.blade.php
-│   │       ├── channel-header.blade.php
-│   │       ├── channel-section.blade.php
-│   │       ├── content-row.blade.php
-│   │       ├── content-table-header.blade.php
-│   │       └── playlist-video-row.blade.php
+│   │   ├── content/
+│   │   │   ├── bulk-actions-toolbar.blade.php
+│   │   │   ├── channel-header.blade.php
+│   │   │   ├── channel-section.blade.php
+│   │   │   ├── content-row.blade.php
+│   │   │   ├── content-table-header.blade.php
+│   │   │   └── playlist-video-row.blade.php
+│   │   └── page-header.blade.php
 │   ├── gallery/
 │   │   ├── channel-header.blade.php
 │   │   ├── channel-sidebar.blade.php
@@ -188,7 +195,10 @@ resources/views/
 │   │   ├── toast-notification-template.blade.php
 │   │   ├── toast-notification.blade.php
 │   │   ├── user-avatar.blade.php
-│   │   └── user-selection-grid.blade.php
+│   │   ├── user-selection-grid.blade.php
+│   │   ├── user-selector.blade.php
+│   │   ├── form-action-button.blade.php
+│   │   └── form-action-link.blade.php
 │   ├── emails/
 │   │   ├── button.blade.php
 │   │   └── layout.blade.php
@@ -200,10 +210,10 @@ resources/views/
 │   ├── app.blade.php
 │   ├── frontend.blade.php
 │   └── guest.blade.php
-├── galleries/             # Gallery resource
-│   ├── index.blade.php
-│   └── show.blade.php
-├── pins/                  # PIN resource
+├── galleries/             # Gallery resource (index = active; show = legacy)
+│   ├── index.blade.php    # Used by GalleryController@show
+│   └── show.blade.php     # Legacy — not rendered
+├── pins/                  # PIN resource (entry view legacy; modal on profiles/selection)
 │   └── entry.blade.php
 ├── player/                 # Player resource
 │   ├── _partial.blade.php
@@ -354,8 +364,8 @@ export default MyModule;
 ```
 
 **Rules:**
-- **ALWAYS use native ES6 `import`/`export` syntax**
-- **NO IIFE wrappers or global namespace assignments**
+- **Prefer native ES6 `import`/`export` syntax**
+- **Avoid new IIFE wrappers or global namespace assignments** (legacy `window.Traktor` still used in places)
 - Use relative import paths (e.g., `../../core/utils.js`)
 - Modules are tree-shakeable and optimized by Vite
 - PS4 browser minimum requirement (ES2020 support)
@@ -706,14 +716,17 @@ app/Http/Controllers/
 │   ├── AnalyticsController.php   # Analytics event tracking API
 │   └── VideoApiController.php   # Video data API
 └── Admin/                        # Admin panel controllers
-    ├── DashboardController.php   # Analytics dashboard (NEW in v2.4)
+    ├── DashboardController.php   # Analytics dashboard
+    ├── QuotaController.php       # YouTube quota stats API
     ├── UserController.php
     ├── ChildrenController.php
     ├── ContentController.php
     ├── DeviceController.php
     ├── ParentDeviceController.php
-    ├── SettingController.php
+    └── SettingController.php
 ```
+
+View composers live in `app/View/Composers/` (`AppComposer`, `DeviceComposer`, `PlayerComposer`, `UserIndexComposer`; `GalleryComposer` targets legacy `galleries.show`).
 
 **Rules:**
 - Use Form Request classes for all form submissions
@@ -805,7 +818,7 @@ public function store(StoreVideoRequest $request)
 ### PHP 8.2+ Features
 
 **Rules:**
-- **Add strict types** to all PHP files: `declare(strict_types=1);`
+- **Add `declare(strict_types=1);`** to new PHP files and when substantially editing existing ones (many legacy controllers predate this)
 - **Use `array_is_list()`** for array validation instead of manual checks
 - **Use match expressions** instead of switch where appropriate
 - **Use readonly properties** for immutable configuration objects
@@ -838,6 +851,7 @@ class ContentController extends Controller
 - Consolidate similar policies (e.g., ContentPolicy for Video and Playlist)
 - Use `$this->authorize()` in controllers instead of manual checks
 - Policies should use `User::canManage()` for consistency
+- Policies in use: `UserPolicy`, `ContentPolicy`, `SettingPolicy`
 
 ### Service Layer Pattern
 
@@ -851,16 +865,19 @@ class ContentController extends Controller
 - **Consistent Return Types** - services should return standardized formats
 
 **Key Services:**
-- **`DeviceTokenService`**: Signed device token management (NEW in v2)
+- **`DeviceTokenService`**: Signed device token management
 - **`DeviceRegistrationService`**: Device registration & validation
+- **`PinService`**: PIN validation helpers
 - **`AssetService`**: Asset file operations
 - **`ContentService`**: Content aggregation, channel management, content creation
 - **`AuthenticationService`**: Centralized authentication logic
 - **`UserLookupService`**: Centralized user lookup with device priority
 - **`ViewingSessionService`**: Viewing session management
-- **`AnalyticsService`**: Video watch analytics tracking and reporting (NEW in v2.4)
-- **`AnalyticsService`**: Video watch analytics tracking and reporting (NEW in v2.4)
+- **`AnalyticsService`**: Video watch analytics tracking and reporting
 - **`YouTubeService`**: YouTube API integration
+- **`ProfilePictureService`**: Profile picture paths and categories
+- **`GoogleCloudMonitoringService`**: YouTube quota monitoring (admin settings UI)
+- **`ParentalControlService`**: Exists but not enforced on viewing paths yet
 
 ### Constants Pattern
 
@@ -1030,6 +1047,18 @@ app/Constants/
 
 ## Documentation Requirements
 
+### Commit & push workflow
+
+Documentation is part of the deliverable. On every commit — and again before push — verify the diff does not leave docs stale. Full workflow, mapping table, and checklists: [Development → Documentation on commit & push](DEVELOPMENT.md#documentation-on-commit--push).
+
+**Minimum before commit:**
+
+- Behaviour, routes, or APIs changed → TECHNICAL_BRIEF and/or ARCHITECTURE
+- New env keys → `.env.example` + DEVELOPMENT
+- Schema/migrations → SCHEMA_NOTES
+- New patterns or file layout → BEST_PRACTICES_RULEBOOK
+- Include doc edits in the **same commit** as the code when possible
+
 ### JavaScript Documentation
 
 **Rules:**
@@ -1089,7 +1118,7 @@ app/Constants/
 - ✅ Constructor promotion for dependency injection
 - ✅ Modern PHP 8.2+ syntax
 - ✅ Typed properties
-- ✅ Strict types (`declare(strict_types=1)`)
+- ✅ Strict types on new/touched PHP files (`declare(strict_types=1)`)
 - ✅ PHP 8.2+ features (`array_is_list()`, match expressions)
 - ✅ View Composers (logic moved from Blade templates)
 - ❌ Service locator pattern (`app(Service::class)`)
@@ -1162,9 +1191,17 @@ app/Constants/
     - Implemented event delegation for reliable back button handling
     - Consistent circular button styling (40px × 40px) for all landscape controls
     - Simplified CSS with relative positioning within container
+  - **Version 2.5** - Documentation sync (2026)
+    - Replaced `device-fingerprint.js` with `device-identity.js` in file trees
+    - Documented gallery `index` as active entry; `show` as legacy
+    - Added quota monitor, wake-lock, orientation modules
+    - Added `QuotaController`, `SettingPolicy`, expanded services list
+    - Added [CSRF Token Guide](CSRF_TOKEN_GUIDE.md); softened strict-types / no-IIFE rules to match codebase
+    - Documented `routes/web.php` as source of truth for browser APIs
+    - Added [commit & push documentation workflow](DEVELOPMENT.md#documentation-on-commit--push)
 
 ---
 
-*This rulebook is based on the actual implementation of Traktor v2. For technical details about features and architecture, refer to the Technical Brief. For CSRF token handling details, refer to the [CSRF Token Guide](CSRF_TOKEN_GUIDE.md).*
+*This rulebook is based on the actual implementation of Traktor v2. For technical details about features and architecture, refer to the [Technical Brief](TECHNICAL_BRIEF.md). For CSRF token handling details, refer to the [CSRF Token Guide](CSRF_TOKEN_GUIDE.md).*
 
 

@@ -165,18 +165,26 @@ class WelcomeController extends Controller
     public function verifyAdminPassword(Request $request)
     {
         $request->validate([
-            'password' => 'required|string',
+            'password' => 'nullable|string|required_without:pin',
+            'pin' => ['nullable', 'string', 'size:4', 'regex:/^[0-9]{4}$/', 'required_without:password'],
             'email' => 'nullable|string|email', // Optional - will try device if not provided
         ]);
 
+        $pin = $request->input('pin');
+        $password = $request->input('password');
+        $usingPin = !empty($pin);
+
         // Check if user is already authenticated (from backend)
         $user = Auth::user();
+        if ($usingPin) {
+            $user = null;
+        }
         
         // Solution 3: If not authenticated, try email/password authentication first
-        if (!$user && $request->filled('email')) {
+        if (!$usingPin && !$user && $request->filled('email')) {
             $credentials = [
                 'email' => $request->email,
-                'password' => $request->password,
+                'password' => $password,
             ];
             
             if (Auth::attempt($credentials)) {
@@ -213,22 +221,32 @@ class WelcomeController extends Controller
                     ->withErrors(['password' => __('messages.user_not_found')]);
             }
             
-            // Verify password for device-based authentication
-            if (!\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
-                if ($request->expectsJson() || $request->ajax()) {
-                    return response()->error(__('messages.invalid_password'), ['password' => [__('messages.invalid_password')]], 422);
+            if ($usingPin) {
+                if (!$user->hasAdminPin() || !$user->verifyAdminPin($pin)) {
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->error(__('auth.invalid_pin'), ['pin' => [__('auth.invalid_pin')]], 422);
+                    }
+                    return redirect()->back()
+                        ->withErrors(['pin' => __('auth.invalid_pin')]);
                 }
-                return redirect()->back()
-                    ->withErrors(['password' => __('messages.invalid_password')]);
+            } else {
+                // Verify password for device-based authentication
+                if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->error(__('messages.invalid_password'), ['password' => [__('messages.invalid_password')]], 422);
+                    }
+                    return redirect()->back()
+                        ->withErrors(['password' => __('messages.invalid_password')]);
+                }
             }
             
             // If device token was expired, refresh it
             if ($this->deviceService->isTokenExpired($device)) {
                 $this->deviceService->refreshDeviceToken($device);
             }
-        } else {
+        } elseif (!$usingPin) {
             // User authenticated via email/password - verify password was correct
-            if (!\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+            if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
                 Auth::logout(); // Logout if password was wrong
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->error(__('messages.invalid_password'), ['password' => [__('messages.invalid_password')]], 422);

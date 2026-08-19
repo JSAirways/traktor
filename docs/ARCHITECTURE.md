@@ -12,6 +12,8 @@ Traktor separates **parent/admin authentication** from **device trust** and **ch
 
 Viewing state lives on the device row so regenerating the Laravel session (e.g. after admin login) does not wipe a child’s unlock. If no device cookie exists, `ViewingSessionService` can fall back to Laravel session keys.
 
+Parent accounts may also store an **`admin_pin`** on `users`. This is separate from child/profile `view_pin` and is only used by the registered-device admin access modal as a convenience alternative to the account password.
+
 ## Device identity model
 
 Fingerprint-based identity was retired. Current model:
@@ -41,6 +43,7 @@ device_uid (UUID)
 
 - `resources/js/core/device-identity.js` — UUID (PS4-safe), storage, form fill, browser/capability collection; global `Traktor.Core.deviceIdentity`
 - `resources/js/core/device-api.js` — registered users + capability refresh APIs
+- `resources/js/core/pin-input.js` — shared 4-digit modal PIN input behavior for viewing PIN and admin PIN flows
 
 ### Server services
 
@@ -58,16 +61,16 @@ Migration `2026_08_13_160000_add_device_uid_to_device_registrations_table` wipes
 
 ## Request pipeline (web)
 
-Notable middleware (`app/Http/Kernel.php`):
+Routing is loaded from `bootstrap/app.php`: `routes/web.php` and `routes/admin.php` (both use the `web` middleware group). Middleware aliases are registered in `bootstrap/app.php`; the `web` group (including `SetLocale`) is defined in `app/Http/Kernel.php`.
 
 | Alias / stack | Role |
 |---------------|------|
 | `web` + `SetLocale` | Session, cookies, CSRF, locale |
 | `account.approved` | Block unapproved parents from admin |
 | `viewing.session` | Require valid viewing unlock for gallery/player |
-| `rate.limit.pin` | Throttle PIN attempts |
+| `rate.limit.pin` | Throttle PIN attempts (scoped: `view`, `admin`, `admin-password`) |
 
-CSRF exceptions (see `VerifyCsrfToken`): selected device/analytics/admin-password endpoints used by the frontend.
+CSRF exceptions (see `VerifyCsrfToken` and [CSRF token guide](CSRF_TOKEN_GUIDE.md)): selected device/analytics/admin-password endpoints used by the frontend. `POST /admin/verify-password` accepts either a password or a 4-digit admin PIN. PIN and password each use separate scoped rate-limit buckets (`admin` vs `admin-password`) so exhausting one does not block the other.
 
 ## Domain layout
 
@@ -76,23 +79,26 @@ Controllers stay thin; business logic lives under `app/Services/`:
 | Area | Examples |
 |------|----------|
 | Device / viewing | `DeviceRegistrationService`, `DeviceTokenService`, `ViewingSessionService`, `PinService` |
-| Content | `ContentService`, `YouTubeService` |
-| Users | `UserApprovalService`, `AuthenticationService`, `UserLookupService` |
+| Content | `ContentService`, `YouTubeService`, `AssetService` |
+| Users | `UserApprovalService`, `AuthenticationService`, `UserLookupService`, `ProfilePictureService` |
 | Analytics | `AnalyticsService` |
-| Ops | `GoogleCloudMonitoringService`, profile pictures, cache invalidation |
+| Ops | `GoogleCloudMonitoringService` (YouTube quota UI), cache invalidation via `users.cache_version` |
 
-Policies: `UserPolicy`, `ContentPolicy`. Models under `app/Models/`.
+View composers under `app/View/Composers/` (`AppComposer`, `DeviceComposer`, `GalleryComposer`, `PlayerComposer`, etc.) inject shared layout data. `DeviceComposer` also exposes whether the registered parent has an `admin_pin`, so the frontend can default the admin access modal to PIN entry.
+
+Policies: `UserPolicy`, `ContentPolicy`, `SettingPolicy`. Models under `app/Models/`.
 
 ## Content and YouTube
 
 - Content is scoped to a **profile user** (`videos.user_id` / playlists) — parent or child
 - Imports may run inline or via `ImportVideoJob` / `ImportPlaylistJob`
 - API key from `settings` table (`YouTubeService`), not `.env`
-- Optional Google Cloud Monitoring credentials (settings) power quota UI
+- Optional Google Cloud Monitoring credentials (settings) power quota UI at **Admin → Settings** (`QuotaController`, `/admin/quota/stats`)
 
 ## Frontend
 
-- Vite 5 entrypoints in `vite.config.js` (app shell, welcome, gallery, player, admin modules)
+- Vite 5 entrypoints in `vite.config.js` (app shell, welcome, gallery, player, admin modules — see [Development](DEVELOPMENT.md))
+- Gallery route `/{slug}/gallery` renders `galleries/index.blade.php` with `resources/js/resources/galleries/index.js`
 - Bootstrap 5 + vanilla ES modules
 - PWA: `public/site.webmanifest`, `public/sw.js`, `resources/js/core/pwa-installer.js`
 
@@ -110,6 +116,11 @@ Policies: `UserPolicy`, `ContentPolicy`. Models under `app/Models/`.
 | `/{slug}/gallery`, `/{slug}/player/...` | Kid viewing |
 | `/admin/...` | Parent/admin console |
 | `/admin/admin/devices` | Global device management (admins) |
+| `/admin/quota/stats` | YouTube quota stats (admin) |
 | `/api/device/*`, `/api/analytics/*`, `/api/view/*` | Device, analytics, PIN APIs |
 
-Some `/api/*` endpoints are registered in both `routes/web.php` and `routes/api.php` for session/CSRF compatibility — prefer the web-mounted variants for browser clients.
+### API routing note
+
+Browser-facing `/api/*` routes are registered in **`routes/web.php`** so they share the session/CSRF stack. The file `routes/api.php` still exists (legacy / reference) but is **not loaded** — `RouteServiceProvider` is not registered in `bootstrap/providers.php`. Do not add new browser API routes there; use `web.php`.
+
+Analytics: `POST /api/analytics/track` is the active endpoint. `POST /api/analytics/session/start` and `/end` remain as no-op stubs for backward compatibility — sessions are derived server-side from events.

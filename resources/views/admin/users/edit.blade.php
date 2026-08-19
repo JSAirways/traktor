@@ -48,6 +48,37 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
+
+    @if(isset($isSelfEdit) && $isSelfEdit && $user->parent_id === null)
+        <div class="row mb-3">
+            <x-forms.pin-field
+                :user="$user"
+                :currentPin="$currentAdminPin ?? null"
+                label="{{ __('admin.admin_access_pin') }}"
+                helpText="{{ __('admin.admin_access_pin_help') }}"
+                pinName="admin_pin"
+                toggleName="use_admin_pin"
+                pinGetter="getAdminPin"
+                pinEnabledGetter="hasAdminPin"
+                fieldId="admin_pin"
+                wrapperId="admin-pin-field-wrapper"
+                asteriskId="admin-pin-asterisk"
+                checkboxId="use_admin_pin"
+                columnClasses="col-12"
+            />
+        </div>
+
+        <script type="application/json" data-pin-field>
+        {
+            "pinWrapperId": "admin-pin-field-wrapper",
+            "pinInputId": "admin_pin",
+            "pinAsteriskId": "admin-pin-asterisk",
+            "usePinCheckboxId": "use_admin_pin",
+            "currentPin": "{{ ($currentAdminPin ?? $user->getAdminPin()) ?? '' }}",
+            "pinName": "admin_pin"
+        }
+        </script>
+    @endif
     
     @if(isset($isSelfEdit) && $isSelfEdit)
         {{-- Profile Selection Toggle and PIN Management (only for parents) --}}
@@ -58,6 +89,8 @@
                 <x-forms.pin-field 
                     :user="$user" 
                     :currentPin="$currentPin ?? null"
+                    label="{{ __('admin.profile_selection_pin') }}"
+                    helpText="{{ __('admin.profile_selection_pin_help') }}"
                     columnClasses="col-12 col-md-6 mb-3 mb-md-0"
                 />
 

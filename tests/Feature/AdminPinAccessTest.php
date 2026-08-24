@@ -67,14 +67,12 @@ class AdminPinAccessTest extends TestCase
         $response->assertSessionHasErrors('admin_pin');
     }
 
-    public function test_registered_device_can_access_admin_with_valid_admin_pin(): void
+    public function test_logged_in_user_can_access_admin_with_valid_admin_pin(): void
     {
         $user = $this->makeApprovedParent();
         $user->setAdminPin('1234');
-        $this->withoutMiddleware(EncryptCookies::class);
-        $this->mockRegisteredDevice($this->makeRegisteredDevice($user));
 
-        $response = $this->postJson(route('admin.verify-password'), [
+        $response = $this->actingAs($user)->postJson(route('admin.verify-password'), [
             'pin' => '1234',
         ]);
 
@@ -84,21 +82,19 @@ class AdminPinAccessTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_registered_device_rejects_invalid_admin_pin(): void
+    public function test_logged_in_user_rejects_invalid_admin_pin(): void
     {
         $user = $this->makeApprovedParent();
         $user->setAdminPin('1234');
-        $this->withoutMiddleware(EncryptCookies::class);
-        $this->mockRegisteredDevice($this->makeRegisteredDevice($user));
 
-        $response = $this->postJson(route('admin.verify-password'), [
+        $response = $this->actingAs($user)->postJson(route('admin.verify-password'), [
             'pin' => '9999',
         ]);
 
         $response
             ->assertStatus(422)
             ->assertJsonPath('errors.pin.0', __('auth.invalid_pin'));
-        $this->assertGuest();
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_password_fallback_still_works_when_admin_pin_is_enabled(): void
@@ -118,9 +114,10 @@ class AdminPinAccessTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_admin_pin_is_rejected_when_not_configured(): void
+    public function test_registered_device_can_access_admin_with_valid_admin_pin_without_auth_session(): void
     {
         $user = $this->makeApprovedParent();
+        $user->setAdminPin('1234');
         $this->withoutMiddleware(EncryptCookies::class);
         $this->mockRegisteredDevice($this->makeRegisteredDevice($user));
 
@@ -129,11 +126,12 @@ class AdminPinAccessTest extends TestCase
         ]);
 
         $response
-            ->assertStatus(422)
-            ->assertJsonPath('errors.pin.0', __('auth.invalid_pin'));
+            ->assertOk()
+            ->assertJsonPath('data.redirect', route('admin.dashboard'));
+        $this->assertAuthenticatedAs($user);
     }
 
-    public function test_admin_pin_is_rejected_when_device_is_not_registered(): void
+    public function test_admin_pin_is_rejected_when_device_is_not_registered_and_guest(): void
     {
         $user = $this->makeApprovedParent();
         $user->setAdminPin('1234');
@@ -148,39 +146,78 @@ class AdminPinAccessTest extends TestCase
 
         $response
             ->assertStatus(422)
-            ->assertJsonPath('errors.password.0', __('messages.device_not_registered'));
+            ->assertJsonPath('errors.pin.0', __('messages.device_not_registered'));
         $this->assertGuest();
     }
 
-    public function test_admin_pin_is_rate_limited_after_repeated_failures(): void
+    public function test_logged_in_admin_pin_works_without_registered_device(): void
+    {
+        $user = $this->makeApprovedParent();
+        $user->setAdminPin('1234');
+
+        $this->mock(DeviceRegistrationService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getDeviceFromCookie')->andReturn(null);
+        });
+
+        $response = $this->actingAs($user)->postJson(route('admin.verify-password'), [
+            'pin' => '1234',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.redirect', route('admin.dashboard'));
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_admin_pin_is_rejected_when_not_configured(): void
+    {
+        $user = $this->makeApprovedParent();
+
+        $response = $this->actingAs($user)->postJson(route('admin.verify-password'), [
+            'pin' => '1234',
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('errors.pin.0', __('auth.invalid_pin'));
+    }
+
+    public function test_admin_pin_login_switches_to_device_parent_when_another_user_is_authenticated(): void
+    {
+        $parent = $this->makeApprovedParent();
+        $parent->setAdminPin('1234');
+        $this->withoutMiddleware(EncryptCookies::class);
+        $this->mockRegisteredDevice($this->makeRegisteredDevice($parent));
+
+        $otherUsername = 'other-'.Str::lower(Str::random(6));
+        $other = User::forceCreate([
+            'username' => $otherUsername,
+            'slug' => $otherUsername,
+            'email' => Str::lower(Str::random(8)).'@example.test',
+            'password' => Hash::make('secret-pass'),
+            'role' => 'user',
+            'account_status' => 'approved',
+            'parent_id' => null,
+            'is_viewable' => true,
+            'appears_in_profile_selection' => true,
+        ])->fresh();
+
+        $response = $this->actingAs($other)->postJson(route('admin.verify-password'), [
+            'pin' => '1234',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.redirect', route('admin.dashboard'));
+        $this->assertAuthenticatedAs($parent);
+    }
+
+    public function test_password_fallback_still_works_after_failed_admin_pin_attempts(): void
     {
         $user = $this->makeApprovedParent();
         $user->setAdminPin('1234');
         $this->withoutMiddleware(EncryptCookies::class);
         $this->mockRegisteredDevice($this->makeRegisteredDevice($user));
-        $this->clearAdminPinRateLimit();
-
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->postJson(route('admin.verify-password'), ['pin' => '9999'])->assertStatus(422);
-        }
-
-        $response = $this->postJson(route('admin.verify-password'), ['pin' => '1234']);
-
-        $response->assertStatus(429);
-        $this->assertStringContainsString(
-            __('auth.too_many_pin_attempts', ['minutes' => 15]),
-            (string) $response->json('message')
-        );
-        $this->assertGuest();
-    }
-
-    public function test_password_fallback_works_when_admin_pin_rate_limit_is_exhausted(): void
-    {
-        $user = $this->makeApprovedParent();
-        $user->setAdminPin('1234');
-        $this->withoutMiddleware(EncryptCookies::class);
-        $this->mockRegisteredDevice($this->makeRegisteredDevice($user));
-        $this->clearAdminPinRateLimit();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $this->postJson(route('admin.verify-password'), ['pin' => '9999'])->assertStatus(422);
@@ -219,6 +256,30 @@ class AdminPinAccessTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_gallery_settings_modal_shows_admin_pin_when_device_parent_has_pin(): void
+    {
+        [$child, $device] = $this->makeViewableChildOnRegisteredDevice();
+        $this->withoutMiddleware(EncryptCookies::class);
+        $this->mockRegisteredDevice($device);
+
+        $this->get(route('gallery.show', $child->slug))
+            ->assertOk()
+            ->assertSee('id="adminPin"', false)
+            ->assertSee('adminAccessPinPanel', false);
+    }
+
+    public function test_gallery_settings_modal_shows_admin_pin_even_when_authenticated_as_child(): void
+    {
+        [$child, $device] = $this->makeViewableChildOnRegisteredDevice();
+        $this->withoutMiddleware(EncryptCookies::class);
+        $this->mockRegisteredDevice($device);
+
+        $this->actingAs($child)
+            ->get(route('gallery.show', $child->slug))
+            ->assertOk()
+            ->assertSee('id="adminPin"', false);
+    }
+
     private function makeApprovedParent(): User
     {
         $username = 'parent-'.Str::lower(Str::random(6));
@@ -236,6 +297,38 @@ class AdminPinAccessTest extends TestCase
         ]);
 
         return $user->fresh();
+    }
+
+    /**
+     * @return array{0: User, 1: DeviceRegistration}
+     */
+    private function makeViewableChildOnRegisteredDevice(): array
+    {
+        $parent = $this->makeApprovedParent();
+        $parent->setAdminPin('1234');
+
+        $childUsername = 'child-'.Str::lower(Str::random(6));
+        $child = User::forceCreate([
+            'username' => $childUsername,
+            'slug' => $childUsername,
+            'email' => Str::lower(Str::random(8)).'@example.test',
+            'password' => Hash::make('secret-pass'),
+            'role' => 'user',
+            'account_status' => 'approved',
+            'parent_id' => $parent->id,
+            'is_viewable' => true,
+            'appears_in_profile_selection' => true,
+        ])->fresh();
+
+        $device = $this->makeRegisteredDevice($parent);
+        $device->update([
+            'current_viewing_slug' => $child->slug,
+            'viewing_validated_at' => now(),
+            'viewing_expires_at' => now()->addDay(),
+        ]);
+        $device->load('parent');
+
+        return [$child, $device];
     }
 
     private function makeRegisteredDevice(User $user): DeviceRegistration
@@ -257,15 +350,10 @@ class AdminPinAccessTest extends TestCase
         $device->load('parent');
 
         $this->mock(DeviceRegistrationService::class, function (MockInterface $mock) use ($device): void {
-            $mock->shouldReceive('getDeviceFromCookie')->andReturn($device);
-            $mock->shouldReceive('isTokenExpired')->andReturnFalse();
+            $mock->shouldReceive('getDeviceFromCookie')->zeroOrMoreTimes()->andReturn($device);
+            $mock->shouldReceive('resolveAdminPinUser')->zeroOrMoreTimes()->andReturn($device->parent);
+            $mock->shouldReceive('isTokenExpired')->zeroOrMoreTimes()->andReturnFalse();
             $mock->shouldReceive('refreshDeviceToken')->never();
         });
-    }
-
-    private function clearAdminPinRateLimit(): void
-    {
-        RateLimiter::clear('admin_pin_attempts_127.0.0.1');
-        RateLimiter::clear('admin_password_attempts_127.0.0.1');
     }
 }

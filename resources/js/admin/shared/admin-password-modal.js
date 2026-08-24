@@ -91,12 +91,24 @@ document.addEventListener('DOMContentLoaded', () => {
         pinLoadingManager?.reset();
     }
 
+    function focusActiveAccessField(mode) {
+        // Defer focus until after Bootstrap finishes panel visibility toggles.
+        setTimeout(() => {
+            if (mode === 'pin') {
+                adminPinInput?.focus();
+                return;
+            }
+            document.getElementById('adminPassword')?.focus();
+        }, 50);
+    }
+
     function toggleAccessMode(mode) {
         const showPin = mode === 'pin';
         adminPinPanel?.classList.toggle('d-none', !showPin);
         adminPasswordPanel?.classList.toggle('d-none', showPin);
         resetPasswordError();
         resetPinState();
+        focusActiveAccessField(mode);
     }
 
     adminPasswordModal.addEventListener('show.bs.modal', async (event) => {
@@ -250,9 +262,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 adminPinInput.disabled = true;
 
                 try {
+                    const formData = new FormData();
+                    formData.append('pin', String(pin));
+                    const csrfInput = adminPasswordForm?.querySelector('input[name="_token"]');
+                    if (csrfInput?.value) {
+                        formData.append('_token', csrfInput.value);
+                    }
+
                     const response = await makeRequest(verifyAdminUrl, {
                         method: 'POST',
-                        body: { pin },
+                        body: formData,
                         responseType: 'json',
                         skipCsrf: true,
                         headers: { Accept: 'application/json' },

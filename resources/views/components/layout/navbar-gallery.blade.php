@@ -38,8 +38,7 @@
     </x-slot>
 </x-navbar>
 
-{{-- Always include admin password modal (same as profile-selection) --}}
-<x-modals.admin-password-modal />
+{{-- Admin password/PIN modal is included in layouts.app --}}
 
 {{-- Options menu offcanvas --}}
 <x-ui.options-menu-offcanvas variant="dark" :show-profile-selection="false" />

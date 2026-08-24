@@ -30,44 +30,64 @@
 @endphp
 
 <div @if($columnClasses) class="{{ $columnClasses }}" @endif>
-    <label class="form-label fw-bold d-flex align-items-center justify-content-between">
-        <span>{{ $label }} <span id="{{ $asteriskId }}" class="text-danger" style="display: {{ $oldToggleValue ? 'inline' : 'none' }};">*</span></span>
-        <div class="form-check form-switch ms-2">
-            <input class="form-check-input" 
-                   type="checkbox" 
-                   id="{{ $checkboxId }}" 
-                   name="{{ $toggleName }}" 
-                   {{ $oldToggleValue ? 'checked' : '' }}
-                   data-pin-toggle="{{ json_encode([
-                       'pinWrapperId' => $wrapperId,
-                       'pinInputId' => $fieldId,
-                       'pinAsteriskId' => $asteriskId,
-                       'usePinCheckboxId' => $checkboxId,
-                       'currentPin' => $currentPin ?? '',
-                       'pinName' => $pinName
-                   ]) }}">
+    <div class="row g-3 align-items-start">
+        <div class="col-12 col-lg-8">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+                <div>
+                    <label class="form-label fw-bold mb-1" for="{{ $checkboxId }}">
+                        {{ $label }} <span id="{{ $asteriskId }}" class="text-danger" style="display: {{ $oldToggleValue ? 'inline' : 'none' }};">*</span>
+                    </label>
+                    @if($helpText)
+                        <div class="form-text mt-0">{{ $helpText }}</div>
+                    @endif
+                </div>
+
+                <div class="form-check form-switch mt-1">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           role="switch"
+                           id="{{ $checkboxId }}"
+                           name="{{ $toggleName }}"
+                           value="1"
+                           {{ $oldToggleValue ? 'checked' : '' }}
+                           data-pin-toggle="{{ json_encode([
+                               'pinWrapperId' => $wrapperId,
+                               'pinInputId' => $fieldId,
+                               'pinAsteriskId' => $asteriskId,
+                               'usePinCheckboxId' => $checkboxId,
+                               'currentPin' => $currentPin ?? '',
+                               'pinName' => $pinName
+                           ]) }}">
+                </div>
+            </div>
         </div>
-    </label>
-    <div id="{{ $wrapperId }}">
-        <div class="input-group">
-            <input type="text" class="form-control @error($pinName) is-invalid @enderror" id="{{ $fieldId }}" name="{{ $pinName }}" value="{{ old($pinName, $currentPin ?? '') }}" maxlength="4" pattern="[0-9]{4}" placeholder="{{ __('forms.enter_pin') }}" {{ $pinEnabled ? 'required' : '' }}>
-            <button type="button" 
-                    class="btn bg-success text-white" 
+
+        <div id="{{ $wrapperId }}" class="col-12 col-lg-4" @if(!$oldToggleValue) style="display: none;" @endif>
+            <input type="text"
+                   class="form-control @error($pinName) is-invalid @enderror"
+                   id="{{ $fieldId }}"
+                   @if($oldToggleValue) name="{{ $pinName }}" @endif
+                   value="{{ old($pinName, $currentPin ?? '') }}"
+                   maxlength="4"
+                   pattern="[0-9]{4}"
+                   inputmode="numeric"
+                   autocomplete="off"
+                   placeholder="{{ __('forms.enter_pin') }}"
+                   {{ $oldToggleValue ? 'required' : '' }}>
+            <button type="button"
+                    class="btn btn-outline-success btn-sm mt-2"
                     data-generate-pin="{{ json_encode([
                         'pinInputId' => $fieldId,
                         'usePinCheckboxId' => $checkboxId,
                         'pinName' => $pinName
                     ]) }}"
                     title="{{ __('admin.generate_pin_title') }}">
-                <i class="bi bi-arrow-clockwise"></i>
+                <i class="bi bi-arrow-clockwise me-1"></i>{{ __('admin.generate_pin') }}
             </button>
+            @error($pinName)
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
         </div>
     </div>
-    @if($helpText)
-        <div class="form-text">{{ $helpText }}</div>
-    @endif
-    @error($pinName)
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
 </div>
 

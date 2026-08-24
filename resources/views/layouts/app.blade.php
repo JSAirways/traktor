@@ -91,6 +91,10 @@
 </head>
 <body class="@yield('body-class', 'bg-dark text-light')">
     @yield('content')
+
+    @if(($hasRegisteredDevice ?? false) || auth()->check())
+        <x-modals.admin-password-modal :has-admin-pin="$parentHasAdminPin ?? false" />
+    @endif
     
     <!-- Toast Container for stacking notifications -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" style="z-index: 1055;"></div>
@@ -98,7 +102,7 @@
     <!-- Toast Template for JavaScript cloning -->
     <x-ui.toast-notification-template />
     
-    @if($hasRegisteredDevice ?? false)
+    @if(($hasRegisteredDevice ?? false) || auth()->check())
         @push('scripts-bottom')
             @vite('resources/js/admin/shared/admin-password-modal.js')
         @endpush

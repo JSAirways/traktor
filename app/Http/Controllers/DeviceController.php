@@ -85,7 +85,7 @@ class DeviceController extends Controller
                     return response()->error(
                         __('auth.invalid_credentials'),
                         [
-                            'username' => [__('auth.invalid_credentials')],
+                            'email' => [__('auth.invalid_credentials')],
                             'password' => [__('auth.invalid_credentials')]
                         ],
                         422
@@ -199,7 +199,8 @@ class DeviceController extends Controller
             );
         }
 
-        // Logout the authenticated session (we only need device cookie)
+        // Device cookies are the frontend trust signal. Always clear the Auth
+        // session so /admin cannot be opened without Settings PIN/password.
         Auth::logout();
 
         $successMessage = $wasReactivated 

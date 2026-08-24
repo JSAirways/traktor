@@ -6,6 +6,7 @@ use App\Constants\DeviceConstants;
 use App\Models\DeviceRegistration;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
 
@@ -528,5 +529,21 @@ class DeviceRegistrationService
         }
 
         return now()->greaterThan($device->token_expires_at);
+    }
+
+    /**
+     * Parent account that owns Settings / admin PIN for this request.
+     * Prefer the registered device parent so gallery (and other frontend pages)
+     * still show PIN even if Auth is a child profile or the session was logged out.
+     */
+    public function resolveAdminPinUser(?Request $request = null): ?User
+    {
+        $request ??= request();
+        $device = $this->getDeviceFromCookie($request);
+        if ($device && $device->isActive() && $device->parent) {
+            return $device->parent;
+        }
+
+        return Auth::user();
     }
 }

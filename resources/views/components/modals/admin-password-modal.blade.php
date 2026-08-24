@@ -1,4 +1,6 @@
-@props([])
+@props([
+    'hasAdminPin' => false,
+])
 
 {{--
     Admin Password Modal Component
@@ -24,7 +26,7 @@
                         :title="__('auth.admin_access')"
                     />
                 </div>
-                @if($parentHasAdminPin ?? false)
+                @if($hasAdminPin)
                     <div id="adminAccessPinPanel">
                         <p class="text-center text-light small mb-3">{{ __('auth.enter_admin_pin_description') }}</p>
                         <form id="adminPinForm">
@@ -43,13 +45,13 @@
                     </div>
                 @endif
 
-                <div id="adminAccessPasswordPanel" class="@if($parentHasAdminPin ?? false) d-none @endif">
+                <div id="adminAccessPasswordPanel" class="@if($hasAdminPin) d-none @endif">
                     <form method="POST" action="{{ route('admin.verify-password') }}" id="adminPasswordForm">
                         @csrf
 
                         <div class="form-floating mb-3">
                             <input type="password" class="form-control @error('password') is-invalid @enderror"
-                                   id="adminPassword" name="password" placeholder=" " @if(!($parentHasAdminPin ?? false)) required autofocus @endif
+                                   id="adminPassword" name="password" placeholder=" " @if(!$hasAdminPin) required autofocus @endif
                                    value="{{ old('password', '') }}">
                             <label for="adminPassword">{{ __('common.password') }}</label>
                             @error('password')
@@ -61,7 +63,7 @@
                         <button type="submit" class="btn btn-success w-100">{{ __('auth.access_admin') }}</button>
                     </form>
 
-                    @if($parentHasAdminPin ?? false)
+                    @if($hasAdminPin)
                         <button type="button" class="btn btn-link text-light w-100 mt-3" id="showAdminPinPanel">
                             {{ __('auth.use_pin_instead') }}
                         </button>

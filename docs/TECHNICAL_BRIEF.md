@@ -59,7 +59,7 @@ Account lifecycle statuses: `pending` → `approved` / `rejected`.
 
 - The **viewing PIN** and **admin access PIN** are separate values with separate purposes.
 - Admin PIN is a **4-digit, device-bound convenience check** for opening the backend from the registered-device UI. It does not replace the normal account password or `/login`.
-- Admin PIN attempts use scoped rate-limit buckets separate from profile viewing PIN (`admin_pin_attempts_*` vs `view_pin_attempts_*`). Password fallback on the same endpoint uses `admin_password_attempts_*`. Configure limits via `PIN_RATE_LIMIT_ATTEMPTS` and `PIN_RATE_LIMIT_WINDOW`.
+- Viewing PIN attempts are rate-limited (`view_pin_attempts_*`). Admin PIN is not rate-limited; password fallback on the same endpoint uses `admin_password_attempts_*`. Configure limits via `PIN_RATE_LIMIT_ATTEMPTS` and `PIN_RATE_LIMIT_WINDOW`.
 
 ### YouTube quota monitoring
 

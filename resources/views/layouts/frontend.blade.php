@@ -49,9 +49,7 @@
 <!-- Password Login Modal - rendered outside container to avoid blur -->
 <x-modals.password-login-modal />
 
-@if($hasRegisteredDevice ?? false)
-    <x-modals.admin-password-modal />
-@endif
+{{-- Admin password/PIN modal is included in layouts.app --}}
 
 {{-- Pending Approval Modal - rendered outside container to avoid blur --}}
 @if(request()->routeIs('welcome'))
@@ -85,7 +83,7 @@
         :show-profile-selection="false"
         :show-register-account="false"
         :show-logout-device="($hasRegisteredDevice ?? false) || (isset($device) && $device && $device->isActive())"
-        :show-admin-button="($hasRegisteredDevice ?? false) || (isset($device) && $device && $device->isActive())"
+        :show-admin-button="auth()->check() || ($hasRegisteredDevice ?? false) || (isset($device) && $device && $device->isActive())"
     />
 @elseif($hasRegisteredDevice ?? false)
     {{-- Other pages with registered device: standard options, but only show logout/admin if logged in --}}

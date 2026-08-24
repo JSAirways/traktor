@@ -1,8 +1,8 @@
-@props(['username' => null, 'deviceName' => null])
+@props(['email' => null, 'username' => null, 'deviceName' => null])
 
 @php
-    // Show form if there are validation errors for password or username
-    $showForm = $errors->has('password') || $errors->has('username') || old('username');
+    // Show form if there are validation errors for password or email
+    $showForm = $errors->has('password') || $errors->has('email') || old('email');
 @endphp
 
 <div id="passwordFormView" class="col-12 col-md-6 col-lg-4" style="display: {{ $showForm ? 'block' : 'none' }};">
@@ -22,7 +22,7 @@
 
             <form method="POST" action="{{ route('device.register') }}" id="passwordOnlyForm">
                 @csrf
-                <input type="hidden" name="username" id="passwordFormUsername" value="{{ $username }}">
+                <input type="hidden" name="email" id="passwordFormEmail" value="{{ $email ?? old('email') }}">
                 <input type="hidden" name="device_name" id="passwordFormDeviceName" value="{{ $deviceName ?? 'Unnamed Device' }}">
                 <input type="hidden" name="device_uid" id="passwordFormDeviceUid">
                 <input type="hidden" name="user_agent" id="passwordFormUserAgent">

@@ -68,9 +68,9 @@ Routing is loaded from `bootstrap/app.php`: `routes/web.php` and `routes/admin.p
 | `web` + `SetLocale` | Session, cookies, CSRF, locale |
 | `account.approved` | Block unapproved parents from admin |
 | `viewing.session` | Require valid viewing unlock for gallery/player |
-| `rate.limit.pin` | Throttle PIN attempts (scoped: `view`, `admin`, `admin-password`) |
+| `rate.limit.pin` | Throttle attempts (scoped: `view`, `admin-password`) |
 
-CSRF exceptions (see `VerifyCsrfToken` and [CSRF token guide](CSRF_TOKEN_GUIDE.md)): selected device/analytics/admin-password endpoints used by the frontend. `POST /admin/verify-password` accepts either a password or a 4-digit admin PIN. PIN and password each use separate scoped rate-limit buckets (`admin` vs `admin-password`) so exhausting one does not block the other.
+CSRF exceptions (see `VerifyCsrfToken` and [CSRF token guide](CSRF_TOKEN_GUIDE.md)): selected device/analytics/admin-password endpoints used by the frontend. `POST /admin/verify-password` accepts either a password or a 4-digit admin PIN. Admin PIN is not rate-limited; password fallback uses `admin_password_attempts_*`. Viewing PIN uses `view_pin_attempts_*`.
 
 ## Domain layout
 

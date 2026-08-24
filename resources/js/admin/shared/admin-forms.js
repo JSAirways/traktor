@@ -39,10 +39,11 @@ function generatePin(pinInputId, usePinCheckboxId, pinName = 'pin') {
     const pinInput = document.getElementById(pinInputId);
     if (pinInput) {
         pinInput.value = pin;
-        // Ensure name attribute is set if toggle is on
+        // Ensure name/required attributes are set if toggle is on
         const usePinCheckbox = document.getElementById(usePinCheckboxId);
         if (usePinCheckbox?.checked) {
             pinInput.setAttribute('name', pinName);
+            pinInput.setAttribute('required', 'required');
         }
     }
 }

@@ -181,22 +181,22 @@
     document.addEventListener('DOMContentLoaded', function() {
         setDeviceFieldsInForms();
 
-        @if(!$errors->has('password') && !$errors->has('username'))
-            var usernameField = document.getElementById('username');
+        @if(!$errors->has('password') && !$errors->has('email'))
+            var emailField = document.getElementById('email');
             var passwordField = document.getElementById('password');
-            if (usernameField) {
-                usernameField.value = '';
+            if (emailField) {
+                emailField.value = '';
             }
             if (passwordField) {
                 passwordField.value = '';
             }
         @else
-            var usernameFieldErr = document.getElementById('username');
+            var emailFieldErr = document.getElementById('email');
             var passwordFieldErr = document.getElementById('password');
             setTimeout(function () {
-                if (usernameFieldErr) {
-                    usernameFieldErr.focus();
-                    usernameFieldErr.classList.add('is-invalid');
+                if (emailFieldErr) {
+                    emailFieldErr.focus();
+                    emailFieldErr.classList.add('is-invalid');
                 }
                 if (passwordFieldErr) {
                     passwordFieldErr.classList.add('is-invalid');

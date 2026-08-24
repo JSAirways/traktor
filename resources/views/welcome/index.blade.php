@@ -5,7 +5,7 @@
 @section('main-content')
     <div class="row justify-content-center">
         <!-- Loading Spinner -->
-        <div id="loadingView" class="col-12 text-center {{ ($errors->has('password') || $errors->has('username')) && old('username') ? 'd-none' : 'd-block' }}">
+        <div id="loadingView" class="col-12 text-center {{ ($errors->has('password') || $errors->has('email')) && old('email') ? 'd-none' : 'd-block' }}">
             <x-ui.loading-spinner :text="__('welcome.checking_device')" />
         </div>
 
@@ -24,8 +24,8 @@
     "registeredUsersRoute": "{{ route('api.device.registered-users') }}",
     "catGifBasePath": "{{ asset('assets/profile-pictures/cats') }}/",
     "csrfToken": "{{ csrf_token() }}",
-    "hasPasswordError": @json($errors->has('password') && old('username')),
-    "oldUsername": @json(old('username')),
+    "hasPasswordError": @json($errors->has('password') && old('email')),
+    "oldEmail": @json(old('email')),
     "oldDeviceName": @json(old('device_name')),
     "duplicateDeviceError": @json(session('device_duplicate_error'))
 }

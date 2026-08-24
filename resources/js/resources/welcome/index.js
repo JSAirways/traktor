@@ -67,8 +67,8 @@ function initializeConfig() {
         if (config.hasPasswordError === true || config.hasPasswordError === 'true') {
             document.body.dataset.hasPasswordError = 'true';
         }
-        if (config.oldUsername) {
-            document.body.dataset.oldUsername = config.oldUsername;
+        if (config.oldEmail) {
+            document.body.dataset.oldEmail = config.oldEmail;
         }
         if (config.oldDeviceName) {
             document.body.dataset.oldDeviceName = config.oldDeviceName;
@@ -548,11 +548,11 @@ function checkRegisteredUsers() {
     
     // Check if we have validation errors and should show password modal
     const hasPasswordError = document.body.dataset.hasPasswordError === 'true';
-    const oldUsername = document.body.dataset.oldUsername || null;
+    const oldEmail = document.body.dataset.oldEmail || null;
     const oldDeviceName = document.body.dataset.oldDeviceName || null;
     
-    // Check if there's a password error and old username
-    if (hasPasswordError && oldUsername) {
+    // Check if there's a password error and the email used for authentication
+    if (hasPasswordError && oldEmail) {
         // Clear timeout since we're handling password error flow
         clearTimeout(timeoutId);
         
@@ -562,27 +562,26 @@ function checkRegisteredUsers() {
         
         ensureDeviceUidInForms();
         
-        // Check for registered users to get profile picture
+        // Check for registered users to get profile picture and display username
         fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
             .then((response) => {
                 registeredUsers = extractUsersFromResponse(response);
                 
-                // Find user's profile picture
                 let user = null;
                 let profilePicture = '';
                 if (registeredUsers && registeredUsers.length > 0) {
-                    user = registeredUsers.find(u => u.username === oldUsername);
+                    user = registeredUsers.find(u => u.email === oldEmail);
                 }
-                if (user) {
-                    if (user.profile_picture) {
-                        profilePicture = user.profile_picture;
-                    }
-                    // Get email from user object (required for authentication)
-                    const email = user.email || '';
-                    
-                    // Open modal with error state
-                    openPasswordLoginModal(email, oldUsername, oldDeviceName, profilePicture);
+                if (user?.profile_picture) {
+                    profilePicture = user.profile_picture;
                 }
+                
+                openPasswordLoginModal(
+                    oldEmail,
+                    user?.username || '',
+                    oldDeviceName,
+                    profilePicture
+                );
                 
                 // Mark password field as invalid after modal is shown
                 const modalElement = document.getElementById('passwordLoginModal');
@@ -597,12 +596,9 @@ function checkRegisteredUsers() {
                 }
             })
             .catch(() => {
-                // Error fetching users, still open modal (don't redirect!)
-                // Note: Without email, authentication will fail, but we show the modal anyway
                 registeredUsers = [];
-                openPasswordLoginModal('', oldUsername, oldDeviceName, '');
+                openPasswordLoginModal(oldEmail, '', oldDeviceName, '');
                 
-                // Mark password field as invalid after modal is shown
                 const modalElement = document.getElementById('passwordLoginModal');
                 if (modalElement) {
                     modalElement.addEventListener('shown.bs.modal', () => {

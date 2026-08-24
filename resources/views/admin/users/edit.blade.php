@@ -84,33 +84,41 @@
         {{-- Profile Selection Toggle and PIN Management (only for parents) --}}
         @if($user->parent_id === null)
             <div class="row mb-3">
-                
                 {{-- PIN Field --}}
                 <x-forms.pin-field 
                     :user="$user" 
                     :currentPin="$currentPin ?? null"
                     label="{{ __('admin.profile_selection_pin') }}"
                     helpText="{{ __('admin.profile_selection_pin_help') }}"
-                    columnClasses="col-12 col-md-6 mb-3 mb-md-0"
+                    columnClasses="col-12"
                 />
+            </div>
 
-                {{-- Hide from Profile Selection Toggle --}}
-                <div class="col-12 col-md-6">
-                    <div class="form-check form-switch">
-                        @php
-                            // Inverted logic: checkbox checked = hide (false), unchecked = show (true)
-                            // If old value exists (from validation error), it's the checkbox state (1 or not present)
-                            // Otherwise, use the inverse of the current appears_in_profile_selection value
-                            $shouldBeChecked = old('appears_in_profile_selection') !== null 
-                                ? old('appears_in_profile_selection') == '1' 
-                                : !$user->appears_in_profile_selection;
-                        @endphp
-                        <input class="form-check-input" type="checkbox" id="appears_in_profile_selection" name="appears_in_profile_selection" value="1" {{ $shouldBeChecked ? 'checked' : '' }}>
-                        <label class="form-check-label fw-bold" for="appears_in_profile_selection">
-                            {{ __('admin.hide_from_profile_selection') }}
-                        </label>
+            {{-- Hide from Profile Selection Toggle --}}
+            <div class="mb-3">
+                @php
+                    // Inverted logic: checkbox checked = hide (false), unchecked = show (true)
+                    // If old value exists (from validation error), it's the checkbox state (1 or not present)
+                    // Otherwise, use the inverse of the current appears_in_profile_selection value
+                    $shouldBeChecked = old('appears_in_profile_selection') !== null 
+                        ? old('appears_in_profile_selection') == '1' 
+                        : !$user->appears_in_profile_selection;
+                @endphp
+                <div class="row g-3 align-items-start">
+                    <div class="col-12 col-lg-8">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div>
+                                <label class="form-label fw-bold mb-1" for="appears_in_profile_selection">
+                                    {{ __('admin.hide_from_profile_selection') }}
+                                </label>
+                                <div class="form-text mt-0">{{ __('admin.hide_from_profile_selection_help') }}</div>
+                            </div>
+                            <div class="form-check form-switch mt-1">
+                                <input class="form-check-input" type="checkbox" role="switch" id="appears_in_profile_selection" name="appears_in_profile_selection" value="1" {{ $shouldBeChecked ? 'checked' : '' }}>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-text">{{ __('admin.hide_from_profile_selection_help') }}</div>
+                    <div class="col-12 col-lg-4"></div>
                 </div>
             </div>
             
@@ -203,7 +211,7 @@
                 <x-forms.pin-field 
                     :user="$user" 
                     :currentPin="$currentPin ?? null"
-                    columnClasses="col-12 col-md-6 mb-3 mb-md-0"
+                    columnClasses="col-12"
                 />
             </div>
             

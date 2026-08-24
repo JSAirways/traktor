@@ -243,7 +243,7 @@ class User extends Authenticatable implements HasLocalePreference
 
         try {
             $storedPin = \Crypt::decryptString($this->admin_pin);
-            return $storedPin === $pin;
+            return hash_equals((string) $storedPin, (string) $pin);
         } catch (\Exception $e) {
             return false;
         }

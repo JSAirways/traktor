@@ -134,8 +134,9 @@ body.modal-open .modal * {
     pointer-events: auto;
 }
 
-/* PIN Entry Modal Specific Styles */
-#pinEntryModal .pin-entry-input {
+/* Large PIN inputs in frontend access modals */
+#pinEntryModal .pin-entry-input,
+#adminPasswordModal .pin-entry-input {
     font-size: 3rem;
     height: 80px;
     text-align: center;
@@ -148,18 +149,21 @@ body.modal-open .modal * {
     padding: 1rem 1.5rem;
 }
 
-#pinEntryModal .pin-entry-input:focus {
+#pinEntryModal .pin-entry-input:focus,
+#adminPasswordModal .pin-entry-input:focus {
     border-color: var(--bs-success);
     box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.25);
     color: var(--bs-white) !important;
     background-color: transparent !important;
 }
 
-#pinEntryModal .pin-entry-input.is-invalid {
+#pinEntryModal .pin-entry-input.is-invalid,
+#adminPasswordModal .pin-entry-input.is-invalid {
     border-color: var(--bs-danger);
 }
 
-#pinEntryModal .pin-entry-input.is-invalid:focus {
+#pinEntryModal .pin-entry-input.is-invalid:focus,
+#adminPasswordModal .pin-entry-input.is-invalid:focus {
     border-color: var(--bs-danger);
     box-shadow: 0 0 0 0.25rem rgba(var(--bs-danger-rgb), 0.25);
 }

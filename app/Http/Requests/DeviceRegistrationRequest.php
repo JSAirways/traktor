@@ -15,6 +15,13 @@ class DeviceRegistrationRequest extends FormRequest
         return true; // Authorization handled in controller
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('email') && $this->input('email')) {
+            $this->merge(['email' => strtolower($this->input('email'))]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */

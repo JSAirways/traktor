@@ -10,20 +10,17 @@ use Symfony\Component\HttpFoundation\Response;
 class RateLimitPinAttempts
 {
     /**
-     * Rate limit PIN validation attempts to prevent brute force attacks.
+     * Rate limit PIN / password validation attempts to prevent brute force attacks.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  $scope  Rate-limit bucket: "view", "admin" (backend PIN), or "admin-password"
+     * @param  string  $scope  Rate-limit bucket: "view" (profile viewing PIN) or "admin-password"
      */
     public function handle(Request $request, Closure $next, string $scope = 'view'): Response
     {
         $maxAttempts = config('access.pin_rate_limit_attempts', 5);
         $decayMinutes = config('access.pin_rate_limit_window', 15);
 
-        if ($scope === 'admin' && ! $request->filled('pin')) {
-            return $next($request);
-        }
-
+        // Admin PIN itself is not rate-limited; this scope only throttles password fallback.
         if ($scope === 'admin-password' && (! $request->filled('password') || $request->filled('pin'))) {
             return $next($request);
         }
@@ -45,11 +42,9 @@ class RateLimitPinAttempts
 
     private function rateLimitKey(string $scope, Request $request): string
     {
-        $prefix = match ($scope) {
-            'admin' => 'admin_pin_attempts',
-            'admin-password' => 'admin_password_attempts',
-            default => 'view_pin_attempts',
-        };
+        $prefix = $scope === 'admin-password'
+            ? 'admin_password_attempts'
+            : 'view_pin_attempts';
 
         return $prefix.'_'.$request->ip();
     }

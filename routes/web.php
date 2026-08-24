@@ -71,9 +71,10 @@ Route::get('/csrf-token', function() {
 })->name('csrf-token')->middleware('web');
 
 // Admin password verification route (no auth middleware - uses device registration)
-// CSRF protection excluded - device registration + password + rate limiting provide sufficient security
+// CSRF protection excluded - device registration + password (+ password rate limiting) provide sufficient security.
+// Admin PIN is not rate-limited (device-bound convenience check).
 Route::post('/admin/verify-password', [App\Http\Controllers\WelcomeController::class, 'verifyAdminPassword'])
-    ->middleware(['rate.limit.pin:admin', 'rate.limit.pin:admin-password'])
+    ->middleware(['rate.limit.pin:admin-password'])
     ->name('admin.verify-password');
 
 // Email action routes (signed URLs for security, no auth middleware)

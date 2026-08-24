@@ -12,7 +12,7 @@
 
 <div class="mb-3">
     <input type="text"
-           class="form-control @error($inputName) is-invalid @enderror"
+           class="form-control pin-entry-input @error($inputName) is-invalid @enderror"
            id="{{ $inputId }}"
            name="{{ $inputName }}"
            maxlength="{{ $maxlength }}"

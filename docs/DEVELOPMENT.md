@@ -34,6 +34,13 @@ Convenience scripts:
 | `composer dev` | concurrently: `serve` + `queue:listen` + `pail` + `vite` |
 | `composer test` / `php artisan test` | PHPUnit |
 
+**Important:** Feature tests use `RefreshDatabase`, which rebuilds the database. PHPUnit is configured to use a separate database (`traktor_v2_test` in `phpunit.xml`), not your main `DB_DATABASE`. Create that empty database once on your MySQL server before running tests. Never point tests at production or shared dev data.
+
+```bash
+# One-time on MySQL (adjust credentials/host as needed)
+CREATE DATABASE traktor_v2_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
 After first admin login, set the YouTube API key at **Admin → Settings** (`/admin/settings`). Imports will not work without it.
 
 ### First admin user

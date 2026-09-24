@@ -20,13 +20,6 @@ function getGallery() {
     return null;
 }
 
-function getGalleryChannels() {
-    if (typeof window !== 'undefined' && window.Traktor && window.Traktor.Modules) {
-        return window.Traktor.Modules.galleryChannels;
-    }
-    return null;
-}
-
 /**
  * Hide loading spinner and show gallery
  * IMPORTANT: Content visibility is handled by gallery-channels filtering
@@ -109,18 +102,6 @@ function setupButtons() {
  * Initialize gallery page
  */
 function init() {
-    // Handle playlist request for channel info
-    if (eventEmitter?.on) {
-        eventEmitter.on('playlist:request-channel-info', (data) => {
-            const galleryChannels = getGalleryChannels();
-            const channelThumbnail = galleryChannels?.getChannelThumbnail?.(data.channelId);
-            const channelName = galleryChannels?.getChannelName?.(data.channelId);
-            if (data.callback) {
-                data.callback(channelThumbnail, channelName);
-            }
-        });
-    }
-    
     // Note: Channel and content type filtering is handled by gallery-channels module
     // All navigation uses page refresh for cross-view transitions (playlist ↔ gallery)
     // Client-side filtering is used for same-page operations (channel/content type filtering)

@@ -42,6 +42,38 @@ function getPlaylist() {
     return null;
 }
 
+/**
+ * Toggle gallery header between browse (filters) and playlist (back + title) modes.
+ * @param {boolean} isPlaylist
+ */
+function setGalleryHeaderMode(isPlaylist) {
+    const galleryHeader = document.getElementById('galleryHeader');
+    const playlistHeader = document.getElementById('playlistHeader');
+    const playlistBackBtnLandscape = document.getElementById('playlistBackBtnLandscape');
+
+    if (galleryHeader) {
+        galleryHeader.classList.toggle('is-playlist', !!isPlaylist);
+    }
+
+    if (playlistHeader) {
+        playlistHeader.classList.toggle('playlist-active', !!isPlaylist);
+        if (isPlaylist) {
+            playlistHeader.removeAttribute('hidden');
+        } else {
+            playlistHeader.setAttribute('hidden', '');
+            const playlistTitle = document.getElementById('playlistTitle');
+            if (playlistTitle) {
+                playlistTitle.textContent = '';
+            }
+        }
+    }
+
+    if (playlistBackBtnLandscape) {
+        playlistBackBtnLandscape.classList.toggle('playlist-active-landscape', !!isPlaylist);
+    }
+}
+
+
 export class Gallery {
     constructor() {
         this.splashScreen = document.querySelector('.gallery-view');
@@ -157,34 +189,8 @@ export class Gallery {
             this.galleryContent.style.display = 'none';
         }
         
-        // Hide playlist header and remove state classes
-        // Use CSS classes for responsive behavior - JavaScript only manages state
-        const playlistHeader = document.getElementById('playlistHeader');
-        const playlistBackBtn = document.getElementById('playlistBackBtn');
-        const playlistBackBtnLandscape = document.getElementById('playlistBackBtnLandscape');
-        
-        if (playlistHeader) {
-            playlistHeader.classList.remove('playlist-active');
-            playlistHeader.classList.add('d-none');
-        }
-        
-        // Show channel header and filter pills, hide back button
-        if (playlistBackBtn) {
-            playlistBackBtn.classList.add('d-none');
-        }
-        if (playlistBackBtnLandscape) {
-            playlistBackBtnLandscape.classList.remove('playlist-active-landscape');
-        }
-        if (toggleElementVisibility) {
-            toggleElementVisibility('channelHeaderContainer', true);
-            toggleElementVisibility('contentFilterPills', true);
-        }
-        
-        // Remove truncation class from channel name header (restore normal styling)
-        const channelNameHeader = document.getElementById('channelNameHeader');
-        if (channelNameHeader) {
-            channelNameHeader.classList.remove('text-truncate');
-        }
+        // Restore browse-mode gallery header
+        setGalleryHeaderMode(false);
         
         // Check if we're returning from playlist view
         // Check URL params first, but also check appState in case URL was already updated
@@ -541,66 +547,11 @@ export class Gallery {
                     );
                 }
                 
-                // DON'T replace channel name header - keep channel name visible
-                // Instead, update playlist header (separate component below channel header)
-                // Update playlist title
+                // Update playlist title and switch header to playlist mode (back + title row)
                 if (updateElementText) {
                     updateElementText('playlistTitle', data.playlist.title);
                 }
-                
-                // Show playlist header (mobile), show back button in channel header (replaces filter pills), keep channel header container visible (for title and thumbnail), hide filter pills
-                // Use CSS classes for responsive behavior - JavaScript only manages state
-                const playlistHeader = document.getElementById('playlistHeader');
-                const playlistBackBtn = document.getElementById('playlistBackBtn');
-                const playlistBackBtnLandscape = document.getElementById('playlistBackBtnLandscape');
-                const contentFilterPills = document.getElementById('contentFilterPills');
-                
-                if (playlistHeader) {
-                    playlistHeader.classList.add('playlist-active');
-                    playlistHeader.classList.remove('d-none');
-                }
-                if (playlistBackBtn) {
-                    playlistBackBtn.classList.remove('d-none');
-                }
-                if (playlistBackBtnLandscape) {
-                    playlistBackBtnLandscape.classList.add('playlist-active-landscape');
-                }
-                if (toggleElementVisibility) {
-                    toggleElementVisibility('channelHeaderContainer', true); // Keep visible for title and thumbnail
-                    toggleElementVisibility('contentFilterPills', false);
-                }
-                
-                // Update channel thumbnail based on playlist's channel
-                // Emit event to request channel info from galleryChannels module
-                if (eventEmitter) {
-                    eventEmitter.emit('playlist:request-channel-info', {
-                        channelId: playlistChannelId,
-                        callback: (channelThumbnail, channelName) => {
-                            // Update thumbnail visibility
-                            const channelAvatarWithImage = document.getElementById('channelAvatarWithImage');
-                            const channelAvatarWithIcon = document.getElementById('channelAvatarWithIcon');
-                            const channelThumbnailImage = document.getElementById('channelThumbnailImage');
-                            
-                            if (channelAvatarWithImage && channelAvatarWithIcon) {
-                                if (channelThumbnail) {
-                                    // Show image avatar, hide icon avatar
-                                    toggleElementVisibility('channelAvatarWithImage', true);
-                                    toggleElementVisibility('channelAvatarWithIcon', false);
-                                    
-                                    // Update image source and alt text
-                                    if (channelThumbnailImage) {
-                                        channelThumbnailImage.src = channelThumbnail;
-                                        channelThumbnailImage.alt = channelName;
-                                    }
-                                } else {
-                                    // Show icon avatar, hide image avatar
-                                    toggleElementVisibility('channelAvatarWithImage', false);
-                                    toggleElementVisibility('channelAvatarWithIcon', true);
-                                }
-                            }
-                        }
-                    });
-                }
+                setGalleryHeaderMode(true);
             }
             
             // Update navigation visibility

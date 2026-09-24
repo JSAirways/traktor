@@ -25,7 +25,10 @@
         />
         <div class="position-absolute bottom-0 start-0 end-0 video-overlay">
             <div class="video-overlay-content">
-                <p class="video-title mb-1 fw-bold text-light text-truncate">{{ $title }}</p>
+                <p class="video-title mb-1 fw-bold text-light text-truncate d-flex align-items-center gap-2">
+                    <i class="bi bi-play-btn text-light" style="flex-shrink: 0;"></i>
+                    {{ $title }}
+                </p>
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-clock text-light" style="flex-shrink: 0;"></i>
                     <span class="text-light small fw-bold">{{ gmdate('H:i:s', $duration) }}</span>

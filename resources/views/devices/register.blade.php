@@ -47,6 +47,18 @@
 
                     <div class="d-flex flex-column gap-2">
                         <button type="submit" class="btn btn-success w-100">{{ __('forms.register_device') }}</button>
+
+                        @if (Route::has('password.request'))
+                            <div class="text-center">
+                                <a
+                                    class="small text-light text-decoration-none"
+                                    href="{{ route('password.request') }}"
+                                    id="deviceRegisterForgotPassword"
+                                >
+                                    {{ __('auth.forgot_password_link') }}
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </form>
             </div>
@@ -208,6 +220,22 @@
         if (registrationForm) {
             registrationForm.addEventListener('submit', function () {
                 setDeviceFieldsInForms();
+            });
+        }
+
+        // Carry typed email into the forgot-password form when possible
+        var forgotLink = document.getElementById('deviceRegisterForgotPassword');
+        if (forgotLink) {
+            forgotLink.addEventListener('click', function (e) {
+                var emailField = document.getElementById('email');
+                var email = emailField && emailField.value ? emailField.value.trim() : '';
+                if (!email) {
+                    return;
+                }
+                e.preventDefault();
+                var url = new URL(forgotLink.href, window.location.origin);
+                url.searchParams.set('email', email);
+                window.location.href = url.toString();
             });
         }
     });

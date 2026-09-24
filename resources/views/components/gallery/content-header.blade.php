@@ -1,10 +1,9 @@
 {{--
     Content Header Component
     
-    Extracted header section that includes channel header, mobile offcanvas, and playlist header.
+    Gallery header plus mobile channel offcanvas.
     Reusable for both two-column and single-column layouts.
     
-    @prop object|null $channel - Selected channel object (or null for "All Videos")
     @prop string $contentType - Currently selected content type: 'all'|'videos'|'playlists' (default: 'all')
     @prop string $currentSlug - Current user slug
     @prop bool $hasChannels - Whether channels exist (more than just "All Videos") (default: false)
@@ -12,7 +11,6 @@
     @prop string $selectedChannelId - Currently selected channel ID (default: 'all')
 --}}
 @props([
-    'channel' => null,
     'contentType' => 'all',
     'currentSlug' => '',
     'hasChannels' => false,
@@ -21,10 +19,8 @@
 ])
 
 <div class="gallery-header-container" data-layer="header">
-    <x-gallery.channel-header 
-        :channel="$channel"
+    <x-gallery.gallery-header 
         :content-type="$contentType"
-        :current-slug="$currentSlug"
         :has-channels="$hasChannels"
     />
     @if($hasChannels)
@@ -36,10 +32,4 @@
             variant="offcanvas"
         />
     @endif
-    {{-- Playlist header (shown when viewing playlist videos) - Layer: playlist-header --}}
-    <x-gallery.playlist-header :has-channels="$hasChannels" />
 </div>
-
-
-
-

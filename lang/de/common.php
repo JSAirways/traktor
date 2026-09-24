@@ -77,6 +77,8 @@ return [
     // PWA Install
     'install_app' => 'Installieren',
     'install_traktor_app' => 'Traktor App installieren',
+    'install_unavailable' => 'Nutzen Sie das Browser-Menü (App installieren / Apps), um Traktor zu installieren, oder öffnen Sie die Seite in Chrome oder Edge.',
+    'install_ios_instructions' => 'Zum Installieren: Teilen tippen, dann „Zum Home-Bildschirm“.',
     
     // Common UI elements
     'profile' => 'Profil',

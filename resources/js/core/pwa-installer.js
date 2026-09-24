@@ -4,8 +4,10 @@
  */
 
 import { eventEmitter } from './events.js';
+import { getTranslation, showToast } from './utils.js';
 
 let deferredPrompt = null;
+let clickHandlerBound = false;
 
 /**
  * Registers the service worker for offline functionality
@@ -69,12 +71,48 @@ function hideInstallButton() {
 }
 
 /**
+ * Whether the app is already running as an installed PWA
+ */
+function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+}
+
+/**
+ * Detect iOS / iPadOS Safari (no beforeinstallprompt support)
+ */
+function isIosSafari() {
+    const ua = window.navigator.userAgent || '';
+    const isIos = /iPad|iPhone|iPod/.test(ua)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isWebkit = /WebKit/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+    return isIos && isWebkit;
+}
+
+/**
+ * User-facing message when the browser cannot show the native install prompt
+ */
+function getInstallUnavailableMessage() {
+    if (isIosSafari()) {
+        return getTranslation(
+            'common.install_ios_instructions',
+            'To install: tap Share, then “Add to Home Screen”.'
+        );
+    }
+
+    return getTranslation(
+        'common.install_unavailable',
+        'Use your browser menu (Install app / Apps) to install Traktor, or open the site in Chrome or Edge.'
+    );
+}
+
+/**
  * Handles install prompt events and manages install button visibility
  * Uses eventEmitter for cross-module communication
  */
 export function handleInstallPrompt() {
     // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isStandalone()) {
         hideInstallButton();
         return;
     }
@@ -91,7 +129,7 @@ export function handleInstallPrompt() {
             eventEmitter.emit('pwa-installable', true);
         }
         
-        // Show install button by toggling class (following rulebook: no DOM manipulation)
+        // Show install button only when the browser can actually install
         showInstallButton();
     });
 
@@ -109,10 +147,14 @@ export function handleInstallPrompt() {
 
 /**
  * Prompts the user to install the PWA
- * @returns {Promise<boolean>} True if user accepted, false if dismissed
+ * @returns {Promise<boolean>} True if user accepted, false if dismissed / unavailable
  */
 export async function promptInstall() {
     if (!deferredPrompt) {
+        // Browser cannot show native install UI — explain how to install manually
+        if (showToast) {
+            showToast(getInstallUnavailableMessage(), 'info', 8000);
+        }
         return false;
     }
 
@@ -133,11 +175,15 @@ export async function promptInstall() {
             return false;
         }
     } catch (error) {
-        // Silently handle install prompt errors
+        if (showToast) {
+            showToast(getInstallUnavailableMessage(), 'info', 8000);
+        }
         return false;
     } finally {
-        // Clean up deferred prompt
+        // Native prompt is single-use; hide until beforeinstallprompt fires again.
+        // iOS never reaches here (no deferredPrompt — early return above).
         deferredPrompt = null;
+        hideInstallButton();
     }
 }
 
@@ -150,15 +196,43 @@ export function isInstallable() {
 }
 
 /**
+ * Attach click handlers for install buttons (idempotent)
+ */
+function bindInstallButtonClicks() {
+    if (clickHandlerBound) {
+        return;
+    }
+    clickHandlerBound = true;
+
+    // Event delegation covers buttons added later / duplicate IDs across slots
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#pwaInstallBtn')) {
+            e.preventDefault();
+            promptInstall().catch(() => {
+                // Silently handle errors
+            });
+        }
+    });
+}
+
+/**
  * Initializes PWA functionality
  * Should be called during app bootstrap
  * Sets up service worker registration and install prompt handling
  */
 export function initPWA() {
     // Check if app is already installed - hide button if so
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isStandalone()) {
         hideInstallButton();
         return;
+    }
+
+    // Keep button hidden until beforeinstallprompt proves install is available,
+    // except on iOS Safari which never fires that event — show it so users can
+    // get Add to Home Screen instructions on click.
+    hideInstallButton();
+    if (isIosSafari()) {
+        showInstallButton();
     }
     
     // Register service worker
@@ -169,45 +243,5 @@ export function initPWA() {
     // Set up install prompt handling
     handleInstallPrompt();
   
-    // Set up install button click handler
-    // Use event delegation to handle buttons that may be added dynamically
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('#pwaInstallBtn')) {
-            e.preventDefault();
-            promptInstall().catch(() => {
-                // Silently handle errors
-            });
-        }
-    });
-    
-    // Also attach directly to existing buttons for immediate functionality
-    const installBtns = document.querySelectorAll('#pwaInstallBtn');
-    installBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            promptInstall().catch(() => {
-                // Silently handle errors
-            });
-        });
-    });
-    
-    // Show button by default - it will be hidden if app is already installed
-    // or if beforeinstallprompt never fires (browser doesn't support/allow installation)
-    // Wait a bit to see if beforeinstallprompt fires, then show if it hasn't been hidden
-    setTimeout(() => {
-        // Only show if we haven't received a beforeinstallprompt event yet
-        // and the app is not installed
-        if (!deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
-            // Check if button is still hidden - if so, show it
-            // This handles cases where beforeinstallprompt hasn't fired yet
-            // or won't fire (browser doesn't support it)
-            const installBtns = document.querySelectorAll('#pwaInstallBtn');
-            installBtns.forEach(btn => {
-                if (btn.style.display === 'none' || btn.classList.contains('d-none')) {
-                    // Show button - let user try to install
-                    showInstallButton();
-                }
-            });
-        }
-    }, 1000); // Wait 1 second for beforeinstallprompt to potentially fire
+    bindInstallButtonClicks();
 }

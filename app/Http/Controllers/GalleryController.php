@@ -43,7 +43,7 @@ class GalleryController extends Controller
         
         // Get cache version for cache-busting
         $cacheVersion = $user->getCacheVersionTimestamp();
-        $versionedCacheKey = "user_gallery_{$slug}_v{$cacheVersion}";
+        $versionedCacheKey = "user_gallery_{$slug}_v{$cacheVersion}_vc1";
         
         // Get selected channel from URL parameter (default: 'all')
         $selectedChannelId = $request->query('channel', 'all');
@@ -96,6 +96,7 @@ class GalleryController extends Controller
                         'playlist_id' => $playlist->playlist_id,
                         'title' => $playlist->title,
                         'duration' => $playlist->total_duration,
+                        'video_count' => $playlist->videos->count(),
                         'thumbnail_url' => "https://i.ytimg.com/vi/{$thumbnailVideoId}/hqdefault.jpg",
                         'display_order' => $playlist->display_order,
                         'channel_id' => $playlist->channel_id,

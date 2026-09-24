@@ -57,7 +57,7 @@
 @endif
 
 @if($regularChannels && $regularChannels->count() > 0)
-<div class="accordion" id="channelsAccordion">
+<div class="accordion" id="channelsAccordion" data-user-id="{{ $selectedUserId ?? auth()->id() }}">
     @foreach($regularChannels as $channelIndex => $channel)
         @php
             $channelContent = collect($contentByChannel[$channel->id] ?? []);

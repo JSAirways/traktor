@@ -20,10 +20,18 @@ npm run build
 php artisan serve
 ```
 
-Asset HMR (separate terminal):
+Full local stack with Vite HMR (one terminal):
 
 ```bash
 npm run dev
+```
+
+Opens Laravel at **http://127.0.0.1:8000** and Vite at **http://127.0.0.1:5173**.
+
+Vite only (if the PHP app is already running elsewhere):
+
+```bash
+npm run vite
 ```
 
 Convenience scripts:

@@ -82,7 +82,6 @@
                         <x-gallery.content-filter-pills :selectedType="$contentType" elementId="contentFilterPillsLandscape" />
                     </div>
                     <x-gallery.content-header 
-                        :channel="$selectedChannel"
                         :content-type="$contentType"
                         :current-slug="$user->slug"
                         :has-channels="$hasChannels"

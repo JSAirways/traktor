@@ -45,7 +45,6 @@
                 {{-- Main Content Column - Layer: main-content --}}
                 <div class="col-12 col-md-9 col-lg-10 gallery-main" data-layer="main-content">
                     <x-gallery.content-header 
-                        :channel="$selectedChannel"
                         :content-type="$contentType"
                         :current-slug="$user->slug"
                         :has-channels="true"

@@ -20,13 +20,6 @@ function getGallery() {
     return null;
 }
 
-function getGalleryChannels() {
-    if (typeof window !== 'undefined' && window.Traktor && window.Traktor.Modules) {
-        return window.Traktor.Modules.galleryChannels;
-    }
-    return null;
-}
-
 function getNavbar() {
     if (typeof window !== 'undefined' && window.Traktor && window.Traktor.Modules) {
         return window.Traktor.Modules.navbar;
@@ -44,37 +37,12 @@ function initGallery() {
     // Hide loading spinner and show gallery
     hideLoadingSpinnerLocal();
     
-    // Setup event listeners for gallery
-    setupGalleryEventListeners();
-    
     // Emit gallery:loaded event for initial page load (server-rendered content)
     if (eventEmitter?.emit) {
         setTimeout(() => {
             eventEmitter.emit('gallery:loaded');
         }, 100);
     }
-}
-
-/**
- * Setup gallery event listeners
- */
-function setupGalleryEventListeners() {
-    if (!eventEmitter?.on) return;
-    
-    const galleryChannels = getGalleryChannels();
-    
-    // Handle playlist request for channel info
-    eventEmitter.on('playlist:request-channel-info', (data) => {
-        const channelThumbnail = galleryChannels?.getChannelThumbnail?.(data.channelId);
-        const channelName = galleryChannels?.getChannelName?.(data.channelId);
-        if (data.callback) {
-            data.callback(channelThumbnail, channelName);
-        }
-    });
-    
-    // Note: Channel and content type filtering is handled by gallery-channels module
-    // All navigation uses page refresh for cross-view transitions (playlist ↔ gallery)
-    // Client-side filtering is used for same-page operations (channel/content type filtering)
 }
 
 /**

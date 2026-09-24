@@ -1,10 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - {{ $title ?? __('admin.dashboard') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- PWA Meta Tags --}}
+    <meta name="theme-color" content="#212529">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Traktor">
 
     {{-- Author Information --}}
     <meta name="author" content="Jonan Steiner">
@@ -16,6 +23,15 @@
         $assetVersion = \App\Models\Setting::where('key', 'asset_version')->value('value') ?? '0';
     @endphp
     <meta name="asset-version" content="{{ $assetVersion }}">
+
+    {{-- Favicons and Icons --}}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}?v={{ $assetVersion }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ $assetVersion }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}?v={{ $assetVersion }}">
+
+    {{-- Web App Manifest (required for Chromium install prompt on admin pages) --}}
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+
     @vite(['resources/css/app.scss', 'resources/js/app.js', 'resources/js/admin/shared/admin-forms.js', 'resources/js/admin/shared/admin-layout.js'])
     @stack('styles')
 </head>
@@ -205,7 +221,24 @@
             :show-admin-button="false" 
         />
     @endauth
-    
+
+    {{-- Embed translations for JavaScript before page scripts --}}
+    @php
+        $translations = [
+            'common' => __('common'),
+            'auth' => __('auth'),
+            'messages' => __('messages'),
+            'welcome' => __('welcome'),
+            'admin' => __('admin'),
+            'gallery' => __('gallery'),
+            'forms' => __('forms'),
+            'account' => __('account'),
+        ];
+    @endphp
+    <script>
+        window.appTranslations = @json($translations);
+        window.appLocale = '{{ app()->getLocale() }}';
+    </script>
     
     @stack('scripts')
 </body>

@@ -16,7 +16,6 @@
 <div class="gallery-layout-single" data-layer="layout">
     <div class="gallery-main" data-layer="main-content">
         <x-gallery.content-header 
-            :channel="null"
             :content-type="$contentType"
             :current-slug="$currentSlug"
             :has-channels="false"

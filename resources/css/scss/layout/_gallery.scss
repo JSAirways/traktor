@@ -6,7 +6,8 @@
 // - data-layer="layout" - Layout wrapper (two-column or single-column)
 // - data-layer="sidebar" - Channel sidebar (desktop)
 // - data-layer="main-content" - Main content area
-// - data-layer="header" - Header container (channel header, playlist header)
+// - data-layer="header" - Header container (gallery header)
+// - data-layer="gallery-header" - Browse filters or playlist back+title row
 // - data-layer="content-scrollable" - Scrollable content area
 // - data-layer="content-grid" - Gallery tiles grid (#galleryContent)
 // - data-layer="empty-state" - Empty gallery state
@@ -17,86 +18,52 @@
 //
 @use '../variables' as *;
 
-/* Playlist header in gallery view */
-#playlistHeader {
-    // Match channel header layout
-    margin-bottom: 1rem;
-    margin-top: 0.5rem; // Add spacing between channel header and playlist header
-    
-    // Show when playlist-active class is present (JavaScript adds this)
-    &.playlist-active {
-        display: flex !important;
+/* Gallery header — browse filters or playlist back+title */
+.gallery-header {
+    width: 100%;
+    min-width: 0;
+
+    .gallery-header-playlist {
+        display: none;
+        width: 100%;
+        min-width: 0;
     }
-    
-    // Mobile landscape: Hide container (elements positioned individually on left)
-    @media (max-width: $bootstrap-mobile-max) {
-        body.is-landscape & {
+
+    &.is-playlist {
+        .gallery-header-browse {
             display: none !important;
         }
+
+        .gallery-header-playlist {
+            display: flex !important;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            width: 100%;
+        }
     }
-    
-    // Playlist title styling (desktop and mobile)
+
     #playlistTitle {
         font-size: 1.25rem;
         font-weight: 600;
-        margin-bottom: 0.25rem;
-        
-        // Larger on desktop
+        line-height: 1.3;
+        min-width: 0;
+
         @media (min-width: $bootstrap-md) {
             font-size: 1.5rem;
-            margin-bottom: 0;
         }
     }
-    
-    // Back button styling
-    #playlistBackBtn {
-        // Uses Bootstrap btn-outline-light styling
-        i {
-            margin-right: 0.25rem;
-        }
-        
-        // Mobile landscape: Hide regular back button when playlist is active (use landscape version instead)
-        @media (max-width: $bootstrap-mobile-max) {
-            body.is-landscape .gallery-header-container:has(.playlist-active) & {
-                display: none !important;
-            }
-        }
-    }
-    
-}
 
-/* Channel header container */
-#channelHeaderContainer {
-    // Ensure proper flex layout with title and thumbnail
-    flex-wrap: nowrap;
-    min-width: 0; // Allow container to shrink
-    gap: 1rem !important; // Increased spacing between elements (overrides gap-2 from Blade)
-    
-    // Hide channel name and picture in playlist view on mobile (both portrait and landscape)
-    @media (max-width: $bootstrap-mobile-max) {
-        .gallery-header-container:has(.playlist-active) & {
-            display: none !important;
+    // Reuses .channel-sidebar-toggle-pill (same as compass / landscape back)
+    #playlistBackBtn {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+        white-space: nowrap;
+
+        i {
+            display: inline-block;
+            line-height: 1;
         }
-    }
-    
-    // Ensure playlist/channel title truncates properly
-    #channelNameHeader {
-        &.text-truncate {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            flex-shrink: 1;
-            min-width: 0; // Allow flex item to shrink below content size
-            max-width: 100%; // Prevent overflow
-        }
-        
-        // Increased margin to channel thumbnail (applies to both playlist and channel title)
-        margin-right: 1rem;
-    }
-    
-    // Channel thumbnail should not shrink
-    #channelThumbnailContainer {
-        flex-shrink: 0;
     }
 }
 
@@ -348,31 +315,23 @@
 
 .gallery-header-container {
     flex-shrink: 0; // Prevent header from shrinking
-    //padding-bottom: 1rem; // Add spacing between header and content
     
-    // Mobile landscape: Hide header controls (moved to left side)
+    // Mobile landscape: header controls move to the left rail
     @media (max-width: $bootstrap-mobile-max) {
         body.is-landscape & {
-            padding-bottom: 0.25rem; // Minimal spacing
-            
-            // Hide the left-side controls in header (they're now on the left side)
-            [data-layer="channel-header-left"] {
-                display: none !important;
-            }
-            
-            // Hide right-side controls in playlist view (back button and channel info moved to left)
-            &:has(.playlist-active) [data-layer="channel-header-right"] {
-                display: none !important;
-            }
-            
-            // Channel header: Minimal margin
-            [data-layer="channel-header"] {
+            padding-bottom: 0.25rem;
+
+            .gallery-header {
                 margin-bottom: 0.25rem !important;
-            }
-            
-            // Hide playlist header container in landscape (elements positioned individually)
-            #playlistHeader {
-                display: none !important;
+
+                .gallery-header-browse {
+                    display: none !important;
+                }
+
+                // Title row hidden in landscape; landscape back button is used instead
+                &.is-playlist .gallery-header-playlist {
+                    display: none !important;
+                }
             }
         }
     }

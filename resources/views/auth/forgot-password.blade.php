@@ -34,7 +34,7 @@
                         :label="__('common.email')" 
                         type="email"
                         :required="true"
-                        :value="old('email')"
+                        :value="old('email', request('email'))"
                         :autofocus="true"
                     />
 

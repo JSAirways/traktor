@@ -52,7 +52,7 @@ class VideoApiController extends Controller
         $cacheVersion = $user->getCacheVersionTimestamp();
         
         // Cache key based on slug, channel, content type, page, per_page, and cache version
-        $cacheKey = "user_videos_{$slug}_" . ($channelId ?? 'all') . "_" . $contentType . "_p{$page}_pp{$perPage}_v{$cacheVersion}";
+        $cacheKey = "user_videos_{$slug}_" . ($channelId ?? 'all') . "_" . $contentType . "_p{$page}_pp{$perPage}_v{$cacheVersion}_vc1";
         
         // Cache duration: 24 hours (86400 seconds) - cache versioning handles invalidation
         // Get from cache or compute
@@ -166,6 +166,7 @@ class VideoApiController extends Controller
                         'playlist_id' => $playlist->playlist_id,
                         'title' => $playlist->title,
                         'duration' => $playlist->total_duration,
+                        'video_count' => $playlist->videos->count(),
                         'thumbnail_url' => $thumbnailUrl,
                         'type' => 'playlist',
                         'display_order' => $playlist->display_order,

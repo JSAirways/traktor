@@ -26,8 +26,6 @@ import {
     getScriptDataJson, 
     buildQueryString, 
     getTranslation, 
-    updateElementText, 
-    toggleVisibility, 
     debounce 
 } from '../core/utils.js';
 
@@ -475,46 +473,12 @@ export class GalleryChannels {
     }
     
     /**
-     * Update title based on current URL
+     * Update document title based on current URL channel
      */
     updateTitleFromUrl() {
         const channelId = this.getChannelFromUrl();
         const channelName = this.getChannelName(channelId);
-        const channelThumbnail = this.getChannelThumbnail(channelId);
         
-        // Update channel name header (if exists)
-        if (updateElementText) {
-            updateElementText('channelNameHeader', channelName);
-        }
-        
-        // Update channel thumbnail (if exists)
-        const channelAvatarWithImage = document.getElementById('channelAvatarWithImage');
-        const channelAvatarWithIcon = document.getElementById('channelAvatarWithIcon');
-        const channelThumbnailImage = document.getElementById('channelThumbnailImage');
-        
-        if (channelAvatarWithImage && channelAvatarWithIcon) {
-            if (channelThumbnail) {
-                // Show image avatar, hide icon avatar
-                if (toggleVisibility) {
-                    toggleVisibility('channelAvatarWithImage', true);
-                    toggleVisibility('channelAvatarWithIcon', false);
-                }
-                
-                // Update image source and alt text
-                if (channelThumbnailImage) {
-                    channelThumbnailImage.src = channelThumbnail;
-                    channelThumbnailImage.alt = channelName;
-                }
-            } else {
-                // Show icon avatar, hide image avatar
-                if (toggleVisibility) {
-                    toggleVisibility('channelAvatarWithImage', false);
-                    toggleVisibility('channelAvatarWithIcon', true);
-                }
-            }
-        }
-        
-        // Update page title
         if (this.username) {
             const baseTitle = `${this.username}'s Traktor`;
             if (channelId === 'all' || !channelId) {
@@ -672,7 +636,7 @@ export class GalleryChannels {
     }
     
     /**
-     * Update page title, channel name header, and thumbnail when channel changes
+     * Update page title when channel changes
      * @deprecated Use updateTitleFromUrl() instead - reads from URL directly
      * This method is kept for backward compatibility but should not be used in new code.
      */

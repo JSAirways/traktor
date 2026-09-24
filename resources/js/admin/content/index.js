@@ -1,9 +1,22 @@
-    /**
-     * Drag and drop reordering for content management (channel-level and content-level)
-     */
-    
-import { showToast, makeRequest } from '../../core/utils.js';
-import { t } from '../../core/i18n.js';
+/**
+ * Drag and drop reordering for content management (channel-level and content-level)
+ */
+
+import { showToast, makeRequest, getTranslation, parseIntSafe } from '../../core/utils.js';
+
+/**
+ * Resolve the content dashboard's selected user id.
+ * The page uses a link-based user selector (not #user_id) plus a hidden input in modals.
+ */
+function resolveSelectedUserId(channelsAccordion) {
+    const fromAccordion = channelsAccordion?.getAttribute('data-user-id');
+    const fromMeta = document.querySelector('meta[name="content-user-id"]')?.getAttribute('content');
+    const fromInput = document.querySelector('input[name="user_id"]')?.value;
+    const fromSelect = document.querySelector('select[name="user_id"]')?.value;
+    const fromQuery = new URLSearchParams(window.location.search).get('user_id');
+
+    return parseIntSafe(fromAccordion ?? fromMeta ?? fromInput ?? fromSelect ?? fromQuery, null);
+}
 
 // Keyboard handler for div-based accordion buttons
 // Bootstrap handles clicks automatically, but we need keyboard support for accessibility
@@ -27,76 +40,66 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!channelsAccordion) return;
         
-        // Sortable should be available globally from the bundle
+    // Sortable should be available globally from the bundle
     if (typeof window === 'undefined' || typeof window.Sortable === 'undefined') {
-            console.error('Sortable not available');
-            return;
-        }
+        console.error('Sortable not available');
+        return;
+    }
     
     const { Sortable } = window;
     
     // Initialize channel-level drag and drop (reorder channels)
-    const channelSortable = Sortable.create(channelsAccordion, {
+    Sortable.create(channelsAccordion, {
         handle: '.channel-drag-handle',
         animation: 150,
         ghostClass: 'bg-light',
         filter: '.accordion-body', // Don't allow dragging when clicking on accordion body
         touchStartThreshold: 5,
         forceFallback: false,
-        onEnd: async (evt) => {
+        onEnd: async () => {
             // Only get channel accordion items (not "All Content" which is not draggable)
             const channelItems = Array.from(channelsAccordion.querySelectorAll('.accordion-item[data-channel-id]:not([data-channel-id="all"])'));
             const channelOrder = channelItems.map(item => item.getAttribute('data-channel-id'));
             
-            // Get user_id from the page (check if user selector exists)
-            const userIdSelect = document.getElementById('user_id');
-            const userId = userIdSelect ? parseInt(userIdSelect.value, 10) : null;
+            const userId = resolveSelectedUserId(channelsAccordion);
             
             if (!userId) {
-                const errorMsg = t?.('messages.channel_order_update_failed', 'Channel order update failed') || 'Channel order update failed';
-                    if (showToast) {
-                        showToast(errorMsg, 'error', 5000);
-                    }
-                    return;
-                }
-                
-                if (!makeRequest) {
-                const errorMsg = 'makeRequest utility not available';
-                    if (showToast) {
+                const errorMsg = getTranslation('messages.channel_order_update_failed', 'Failed to update channel order. Please try again.');
+                if (showToast) {
                     showToast(errorMsg, 'error', 5000);
-                    }
+                }
                 return;
             }
             
             // Send update to server
             try {
                 const response = await makeRequest('/admin/content/reorder-channels', {
-                method: 'POST',
-                body: { 
-                    user_id: userId,
-                    channels: channelOrder 
-                },
+                    method: 'POST',
+                    body: { 
+                        user_id: userId,
+                        channels: channelOrder 
+                    },
                     responseType: 'json'
                 });
                 
-                    // Extract data from response object
+                // Extract data from response object
                 const data = response.data || response; // Backward compatibility fallback
                 if (data?.success) {
-                    const successMsg = t?.('messages.channel_order_updated', 'Channel order updated') || 'Channel order updated';
-                        if (showToast) {
-                            showToast(successMsg, 'success', 3000);
-                        }
-                    } else {
-                    const errorMsg = t?.('messages.channel_order_update_failed', 'Channel order update failed') || 'Channel order update failed';
-                        if (showToast) {
+                    const successMsg = getTranslation('messages.channel_order_updated', 'Channel order updated successfully.');
+                    if (showToast) {
+                        showToast(successMsg, 'success', 3000);
+                    }
+                } else {
+                    const errorMsg = getTranslation('messages.channel_order_update_failed', 'Failed to update channel order. Please try again.');
+                    if (showToast) {
                         showToast(errorMsg, 'error', 5000);
-                        }
+                    }
                 }
             } catch (error) {
-                const errorMsg = t?.('messages.channel_order_update_failed', 'Channel order update failed') || 'Channel order update failed';
-                    if (showToast) {
+                const errorMsg = getTranslation('messages.channel_order_update_failed', 'Failed to update channel order. Please try again.');
+                if (showToast) {
                     showToast(errorMsg, 'error', 5000);
-                    }
+                }
             }
         }
     });
@@ -105,9 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const channelTables = channelsAccordion.querySelectorAll('table[data-channel-id]');
     for (const table of channelTables) {
         const tbody = table.querySelector('tbody');
-            if (!tbody) continue;
-        
-        const channelId = table.getAttribute('data-channel-id');
+        if (!tbody) continue;
         
         Sortable.create(tbody, {
             handle: '.drag-handle',
@@ -117,53 +118,45 @@ document.addEventListener('DOMContentLoaded', () => {
             touchStartThreshold: 5,
             forceFallback: false,
             group: 'content-items', // Allow dragging between channels if needed
-            onEnd: async (evt) => {
+            onEnd: async () => {
                 // Only get main content rows (not expanded playlist rows) for this channel
                 const items = Array.from(tbody.querySelectorAll('tr[data-id]:not(.no-drag)'));
                 const order = items.map((row, index) => ({
-                            id: parseInt(row.getAttribute('data-id'), 10),
-                type: row.getAttribute('data-type'),
+                    id: parseInt(row.getAttribute('data-id'), 10),
+                    type: row.getAttribute('data-type'),
                     order: index + 1
                 }));
-                    
-                    if (!makeRequest) {
-                    const errorMsg = 'makeRequest utility not available';
-                        if (showToast) {
-                        showToast(errorMsg, 'error', 5000);
-                        }
-                        return;
-                    }
             
-            // Send update to server
+                // Send update to server
                 try {
                     const response = await makeRequest('/admin/content/reorder', {
-                method: 'POST',
-                body: { items: order },
+                        method: 'POST',
+                        body: { items: order },
                         responseType: 'json'
                     });
                     
                     // Extract data from response object
                     const data = response.data || response; // Backward compatibility fallback
                     if (data?.success) {
-                        const successMsg = t?.('messages.order_updated', 'Order updated') || 'Order updated';
-                            if (showToast) {
+                        const successMsg = getTranslation('messages.order_updated', 'Order updated');
+                        if (showToast) {
                             showToast(successMsg, 'success', 3000);
-                            }
+                        }
                     } else {
-                        const errorMsg = t?.('messages.order_update_failed', 'Order update failed') || 'Order update failed';
+                        const errorMsg = getTranslation('messages.order_update_failed', 'Order update failed');
                         if (showToast) {
                             showToast(errorMsg, 'error', 5000);
                         }
                     }
                 } catch (error) {
-                    const errorMsg = t?.('messages.order_update_failed', 'Order update failed') || 'Order update failed';
-                            if (showToast) {
+                    const errorMsg = getTranslation('messages.order_update_failed', 'Order update failed');
+                    if (showToast) {
                         showToast(errorMsg, 'error', 5000);
-                            }
+                    }
                 }
-        }
-    });
-        }
+            }
+        });
+    }
     
     // Handle channel import buttons (prefill modal)
     const channelImportButtons = document.querySelectorAll('.channel-import-btn');

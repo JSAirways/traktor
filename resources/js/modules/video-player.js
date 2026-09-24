@@ -129,6 +129,9 @@ export class VideoPlayer {
             requestWakeLock().catch(() => {
                 // Silently handle errors - wake lock is optional functionality
             });
+
+            // YouTube often resets rate when loading the next video
+            this.applyStoredPlaybackRate();
             
             if (appState?.set) {
                 appState.set('isVideoPaused', false);
@@ -217,6 +220,9 @@ export class VideoPlayer {
             if (appState?.set) {
                 appState.set('currentVideoId', videoId);
             }
+
+            // Keep the user's chosen speed across video changes
+            setTimeout(() => this.applyStoredPlaybackRate(), 250);
         } catch (error) {
             if (eventEmitter?.emit) {
                 eventEmitter.emit('video:error', { error: error, videoId: videoId });
@@ -283,6 +289,50 @@ export class VideoPlayer {
         } catch (error) {
             // Silently handle seek errors
         }
+    }
+
+    /**
+     * Set playback speed (YouTube IFrame API)
+     * @param {number} rate - e.g. 1, 1.5, 1.75, 2
+     */
+    setPlaybackRate(rate) {
+        if (!this.player || typeof this.player.setPlaybackRate !== 'function') {
+            return false;
+        }
+
+        try {
+            this.player.setPlaybackRate(rate);
+            if (appState?.set) {
+                appState.set('playbackRate', rate);
+            }
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Get current playback speed
+     * @returns {number}
+     */
+    getPlaybackRate() {
+        if (!this.player || typeof this.player.getPlaybackRate !== 'function') {
+            return appState?.get?.('playbackRate') || 1;
+        }
+
+        try {
+            return this.player.getPlaybackRate() || 1;
+        } catch (error) {
+            return appState?.get?.('playbackRate') || 1;
+        }
+    }
+
+    /**
+     * Re-apply stored playback rate (YouTube may reset on new videos)
+     */
+    applyStoredPlaybackRate() {
+        const rate = appState?.get?.('playbackRate') || 1;
+        this.setPlaybackRate(rate);
     }
     
     // Get current time

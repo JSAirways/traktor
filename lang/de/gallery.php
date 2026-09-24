@@ -23,6 +23,7 @@ return [
     'channel_sidebar_title' => 'Kanäle',
     'video_thumbnail' => 'Video-Miniaturansicht',
     'playlist_thumbnail' => 'Playlist-Miniaturansicht',
+    'playback_speed' => 'Wiedergabegeschwindigkeit',
     'player_loading' => 'Der Videoplayer lädt noch. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
     'video_load_error' => 'Fehler beim Laden des Videos. Bitte versuchen Sie es erneut.',
     'invalid_playlist_id' => 'Ungültige Playlist-ID. Bitte versuchen Sie es erneut.',

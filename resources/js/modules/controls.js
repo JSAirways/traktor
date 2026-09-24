@@ -45,11 +45,13 @@ export class Controls {
         if (eventEmitter?.on) {
             eventEmitter.on('player:ready', () => {
                 this.setupElements();
+                this.syncPlaybackSpeedLabel();
             });
             
             eventEmitter.on('view:player-shown', () => {
                 setTimeout(() => {
                     this.setupElements();
+                    this.syncPlaybackSpeedLabel();
                 }, 200);
             });
             
@@ -57,12 +59,17 @@ export class Controls {
             if (appState?.get?.('playerReady')) {
                 setTimeout(() => {
                     this.setupElements();
+                    this.syncPlaybackSpeedLabel();
                 }, 100);
             }
             
             // Listen for video state changes
             eventEmitter.on('video:statechange', (data) => {
                 this.updateState(data.state);
+            });
+
+            eventEmitter.on('video:play', () => {
+                this.syncPlaybackSpeedLabel();
             });
         }
     }
@@ -161,6 +168,8 @@ export class Controls {
             });
             this.setupProgressBarDrag(progressBar);
         }
+
+        this.setupPlaybackSpeedButton();
         
         // Setup fullscreen button
         const fullscreenBtn = document.getElementById('customFullscreen');
@@ -176,6 +185,64 @@ export class Controls {
                 }
             }
         }
+    }
+
+    /**
+     * Cycle playback speed: 1x → 1.5x → 1.75x → 2x → 1x
+     */
+    setupPlaybackSpeedButton() {
+        const speedBtn = document.getElementById('customPlaybackSpeed');
+        if (!speedBtn || speedBtn.hasAttribute('data-handler-attached')) {
+            this.syncPlaybackSpeedLabel();
+            return;
+        }
+
+        speedBtn.setAttribute('data-handler-attached', 'true');
+        speedBtn.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+
+        const handleSpeedToggle = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const rates = [1, 1.5, 1.75, 2];
+            const current = Number(appState?.get?.('playbackRate') || speedBtn.dataset.speed || 1);
+            const currentIndex = rates.findIndex((rate) => Math.abs(rate - current) < 0.001);
+            const nextRate = rates[(currentIndex + 1) % rates.length];
+
+            const videoPlayer = getVideoPlayer();
+            if (videoPlayer?.setPlaybackRate) {
+                videoPlayer.setPlaybackRate(nextRate);
+            } else if (appState?.set) {
+                appState.set('playbackRate', nextRate);
+            }
+
+            this.syncPlaybackSpeedLabel(nextRate);
+            this.showControlBar();
+            if (appState?.get && !appState.get('isVideoPaused')) {
+                this.scheduleAutoHide();
+            }
+        };
+
+        speedBtn.addEventListener('click', handleSpeedToggle);
+        speedBtn.addEventListener('touchend', handleSpeedToggle, { passive: false });
+        this.syncPlaybackSpeedLabel();
+    }
+
+    /**
+     * Update the speed button label/aria from the current rate
+     * @param {number|null} rate
+     */
+    syncPlaybackSpeedLabel(rate = null) {
+        const speedBtn = document.getElementById('customPlaybackSpeed');
+        const label = document.getElementById('customPlaybackSpeedLabel');
+        if (!speedBtn || !label) return;
+
+        const value = rate ?? Number(appState?.get?.('playbackRate') || speedBtn.dataset.speed || 1);
+        const display = Number.isInteger(value) ? `${value}x` : `${value}x`;
+        label.textContent = display;
+        speedBtn.dataset.speed = String(value);
+        speedBtn.setAttribute('aria-label', `${getTranslation?.('gallery.playback_speed', 'Playback speed') || 'Playback speed'}: ${display}`);
+        speedBtn.setAttribute('title', display);
     }
     
     
@@ -337,8 +404,8 @@ export class Controls {
         const navbarEl = document.querySelector('.top-navbar.player-view-mode');
         
         // Check for specific control elements by ID or class
-        const controlElementIds = ['customPlayPause', 'customFullscreen', 'customProgressBar', 'customProgressFill', 'customTimeDisplay'];
-        const controlElementClasses = ['custom-control-btn', 'custom-progress-container', 'custom-progress-bar', 'custom-progress-fill', 'custom-time-display'];
+        const controlElementIds = ['customPlayPause', 'customFullscreen', 'customPlaybackSpeed', 'customProgressBar', 'customProgressFill', 'customTimeDisplay'];
+        const controlElementClasses = ['custom-control-btn', 'custom-progress-container', 'custom-progress-bar', 'custom-progress-fill', 'custom-time-display', 'custom-playback-speed'];
         
         let checkElement = element;
         while (checkElement && checkElement !== document.body) {

@@ -294,13 +294,32 @@
     flex-shrink: 0;
 }
 
+.player-view .custom-playback-speed {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    min-width: 3.25rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+
+    #customPlaybackSpeedLabel {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        background: var(--bs-light, #f8f9fa);
+        color: var(--bs-dark, #212529);
+        border-radius: 0.375rem;
+        line-height: 1.2;
+    }
+}
+
 /* Progress container */
 .player-view .custom-progress-container {
     flex: 1 1 auto;
     display: flex;
     align-items: center;
     min-width: 0;
-    max-width: calc(100% - 280px); /* Reserve space for play button, time display, and fullscreen button */
+    max-width: calc(100% - 340px); /* Reserve space for play, time, speed, fullscreen */
     /* Ensure progress bar is clickable */
     position: relative;
     z-index: 1003;
@@ -357,7 +376,12 @@
     }
     
     .player-view .custom-progress-container {
-        max-width: calc(100% - 120px);
+        max-width: calc(100% - 180px);
+    }
+
+    .player-view .custom-playback-speed {
+        font-size: 0.95rem;
+        min-width: 2.75rem;
     }
 }
 

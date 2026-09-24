@@ -1,8 +1,7 @@
 {{--
     Control Bar Component
     
-    Control bar with play/pause, progress, time display, and fullscreen buttons.
-    All control bar UI elements.
+    Control bar with play/pause, progress, time, playback speed, and fullscreen.
 --}}
 
 <!-- Control Bar - Outside video container to avoid overflow clipping -->
@@ -28,6 +27,18 @@
     <div id="customTimeDisplay" class="custom-time-display">
         <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
     </div>
+
+    <!-- Playback speed toggle: 1x → 1.5x → 1.75x → 2x → 1x -->
+    <button
+        type="button"
+        id="customPlaybackSpeed"
+        class="custom-control-btn custom-playback-speed"
+        aria-label="{{ __('gallery.playback_speed') }}"
+        title="{{ __('gallery.playback_speed') }}"
+        data-speed="1"
+    >
+        <span id="customPlaybackSpeedLabel">1x</span>
+    </button>
     
     <!-- Fullscreen Button -->
     <button type="button" id="customFullscreen" class="custom-control-btn custom-fullscreen" aria-label="Fullscreen">

@@ -23,6 +23,7 @@ return [
     'channel_sidebar_title' => 'Channels',
     'video_thumbnail' => 'Video thumbnail',
     'playlist_thumbnail' => 'Playlist thumbnail',
+    'playback_speed' => 'Playback speed',
     'player_loading' => 'Video player is still loading. Please wait a moment and try again.',
     'video_load_error' => 'Error loading video. Please try again.',
     'invalid_playlist_id' => 'Invalid playlist ID. Please try again.',

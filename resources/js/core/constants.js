@@ -76,9 +76,19 @@ export const TimingConstants = {
     DOUBLE_CLICK_DELAY: 300,
     
     /**
-     * Touch duration threshold for tap detection (milliseconds)
+     * Relative seek amount for arrow keys / side double-tap (seconds)
      */
-    TOUCH_DURATION_THRESHOLD: 200,
+    SEEK_SECONDS: 10,
+    
+    /**
+     * How long to trust optimistic seek position over YouTube getCurrentTime (ms)
+     */
+    SEEK_SETTLE_MS: 750,
+    
+    /**
+     * Fraction of player width treated as left/right scrub zones (0–0.5)
+     */
+    SEEK_SIDE_ZONE: 0.33,
     
     /**
      * Modal focus delay to ensure DOM is ready (milliseconds)

@@ -12,7 +12,6 @@ class AppState {
             // Player state
             player: null,
             playerReady: false,
-            isPausedByScript: false,
             isVideoPaused: false,
             playbackRate: 1,
             

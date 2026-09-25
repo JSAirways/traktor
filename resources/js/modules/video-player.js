@@ -24,7 +24,6 @@ export class VideoPlayer {
     constructor() {
         this.player = null;
         this.playerReady = false;
-        this.isPausedByScript = false;
     }
     
     // Initialize YouTube player (called by global onYouTubeIframeAPIReady)
@@ -77,6 +76,7 @@ export class VideoPlayer {
                     disablekb: 1,
                     fs: 0,
                     iv_load_policy: 3,
+                    cc_load_policy: 0, // Do not force captions on (user preference still may apply)
                     playsinline: 1,
                     autohide: 1,
                     enablejsapi: 1, // Explicitly enable JavaScript API
@@ -102,6 +102,7 @@ export class VideoPlayer {
     
     onReady(event) {
         this.player.setPlaybackQuality('hd1080');
+        this.disableCaptions();
         event.target.stopVideo();
         this.playerReady = true;
         
@@ -130,7 +131,8 @@ export class VideoPlayer {
                 // Silently handle errors - wake lock is optional functionality
             });
 
-            // YouTube often resets rate when loading the next video
+            // YouTube may re-enable captions or reset rate when loading the next video
+            this.disableCaptions();
             this.applyStoredPlaybackRate();
             
             if (appState?.set) {
@@ -221,8 +223,11 @@ export class VideoPlayer {
                 appState.set('currentVideoId', videoId);
             }
 
-            // Keep the user's chosen speed across video changes
-            setTimeout(() => this.applyStoredPlaybackRate(), 250);
+            // Keep the user's chosen speed across video changes; captions off by default
+            setTimeout(() => {
+                this.disableCaptions();
+                this.applyStoredPlaybackRate();
+            }, 250);
         } catch (error) {
             if (eventEmitter?.emit) {
                 eventEmitter.emit('video:error', { error: error, videoId: videoId });
@@ -247,7 +252,6 @@ export class VideoPlayer {
         
         try {
             this.player.pauseVideo();
-            this.isPausedByScript = true;
         } catch (error) {
             // Silently handle pause errors
         }
@@ -288,6 +292,24 @@ export class VideoPlayer {
             this.player.seekTo(seconds, true);
         } catch (error) {
             // Silently handle seek errors
+        }
+    }
+
+    /**
+     * Force closed captions off.
+     * YouTube remembers account/browser caption preference; unloadModule is the
+     * reliable way to clear them for this player session.
+     */
+    disableCaptions() {
+        if (!this.player) return;
+
+        try {
+            if (typeof this.player.unloadModule === 'function') {
+                this.player.unloadModule('captions');
+                this.player.unloadModule('cc');
+            }
+        } catch (error) {
+            // Silently handle — captions module may not be loaded yet
         }
     }
 

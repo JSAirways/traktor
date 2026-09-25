@@ -13,23 +13,8 @@
 
 <!-- Player View Container - Fixed to viewport -->
 <div class="player-view">
-    <!-- Layer 1: YouTube iframe (bottom layer) -->
-    <div id="videoContainer" class="video-container d-flex align-items-center justify-content-center" data-layer="video">
-        <div id="player" class="player-iframe"></div>
-    </div>
-    
-    <!-- Layer 2: Click Blocker (intercepts all clicks) -->
-    <div class="click-blocker-layer" data-layer="click-blocker"></div>
-    
-    <!-- Layer 3: Overlay (blur + cat GIF when paused) -->
-    <div class="overlay-layer" data-layer="overlay">
-        <div class="video-overlay-effect"></div>
-        <div class="cat-gif-container d-none">
-            <img id="catGif" src="" alt="Paused" />
-        </div>
-    </div>
-    
-    <!-- Layer 4: Controls (navbar + control bar) -->
+    <x-player.video-container :catGifs="$catGifs ?? []" />
+
     <div class="controls-layer" data-layer="controls">
         <x-player.control-bar />
     </div>

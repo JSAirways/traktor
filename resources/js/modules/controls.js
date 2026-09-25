@@ -23,6 +23,13 @@ function getNavbar() {
     return null;
 }
 
+function getFullscreen() {
+    if (typeof window !== 'undefined' && window.Traktor && window.Traktor.Modules) {
+        return window.Traktor.Modules.fullscreen;
+    }
+    return null;
+}
+
 export class Controls {
     constructor() {
         this.progressUpdateInterval = null;
@@ -34,12 +41,22 @@ export class Controls {
         this.clickBlocker = null;
         this.catGifImage = null;
         this.playerElement = document.getElementById('videoContainer');
+        this.lastSideTap = { time: 0, side: null };
+        this.pendingTapTimeout = null;
+        this.lastTouchEndTime = 0;
+        this.pendingSeekTime = null;
+        this.lastSeekAt = 0;
+        this.seekVideoId = null;
+        this._hoverHandlersAttached = false;
+        this._autoHideAttached = false;
+        this._keyboardAttached = false;
         this.init();
     }
     
     init() {
         // All elements are in Blade template - just find and set up handlers
         this.setupElements();
+        this.setupKeyboardShortcuts();
         
         // Initialize when player is ready
         if (eventEmitter?.on) {
@@ -71,12 +88,52 @@ export class Controls {
             eventEmitter.on('video:play', () => {
                 this.syncPlaybackSpeedLabel();
             });
+
+            eventEmitter.on('fullscreen:change', () => {
+                this.reveal();
+                this.bumpAutoHide();
+            });
         }
+    }
+
+    /**
+     * Drop optimistic seek state (e.g. when the active video changes)
+     */
+    clearPendingSeek() {
+        this.pendingSeekTime = null;
+        this.lastSeekAt = 0;
+    }
+
+    /**
+     * Invalidate pending seek when the loaded video id changes
+     */
+    clearPendingSeekIfVideoChanged() {
+        const videoId = appState?.get?.('currentVideoId') ?? null;
+        if (videoId !== this.seekVideoId) {
+            this.seekVideoId = videoId;
+            this.clearPendingSeek();
+        }
+    }
+
+    /**
+     * Stamp last touch action time (shared ghost-click filter)
+     */
+    markTouchAction() {
+        this.lastTouchEndTime = Date.now();
+    }
+
+    /**
+     * Whether a click is a synthetic ghost click after touch
+     * @returns {boolean}
+     */
+    isGhostClick() {
+        return Date.now() - this.lastTouchEndTime < 500;
     }
     
     // Setup elements from Blade template
     setupElements() {
         // Find elements (all should exist in Blade template)
+        this.playerElement = document.getElementById('videoContainer');
         this.catGifContainer = document.querySelector('.overlay-layer .cat-gif-container');
         this.videoOverlay = document.querySelector('.overlay-layer .video-overlay-effect');
         this.clickBlocker = document.querySelector('.click-blocker-layer');
@@ -119,12 +176,21 @@ export class Controls {
         controlBar.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
         controlBar.addEventListener('touchend', (e) => {
             e.stopPropagation();
+            this.markTouchAction();
             this.showControlBar();
             if (appState?.get && !appState.get('isVideoPaused')) {
                 this.scheduleAutoHide();
             }
         }, { passive: false });
         controlBar.addEventListener('click', (e) => e.stopPropagation());
+        controlBar.addEventListener('mouseenter', () => {
+            this.showControlBar();
+            this.clearAutoHide();
+        });
+        controlBar.addEventListener('mouseleave', () => {
+            if (this.isDragging || (appState?.get?.('isVideoPaused'))) return;
+            this.scheduleAutoHide();
+        });
         
         // Setup play/pause button
         const playPauseBtn = document.getElementById('customPlayPause');
@@ -137,6 +203,9 @@ export class Controls {
             const handlePlayPause = (e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                if (e.type === 'click' && this.isGhostClick()) return;
+                if (e.type === 'touchend') this.markTouchAction();
+
                 if (videoPlayer?.togglePlayPause) {
                     const currentState = videoPlayer.getPlayerState?.();
                     const willBePlaying = currentState !== YT.PlayerState.PLAYING;
@@ -164,6 +233,7 @@ export class Controls {
             }, { passive: false });
             progressBar.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (this.isGhostClick()) return;
                 this.handleProgressClick(e);
             });
             this.setupProgressBarDrag(progressBar);
@@ -203,6 +273,8 @@ export class Controls {
         const handleSpeedToggle = (e) => {
             e.stopPropagation();
             e.preventDefault();
+            if (e.type === 'click' && this.isGhostClick()) return;
+            if (e.type === 'touchend') this.markTouchAction();
 
             const rates = [1, 1.5, 1.75, 2];
             const current = Number(appState?.get?.('playbackRate') || speedBtn.dataset.speed || 1);
@@ -244,20 +316,21 @@ export class Controls {
         speedBtn.setAttribute('aria-label', `${getTranslation?.('gallery.playback_speed', 'Playback speed') || 'Playback speed'}: ${display}`);
         speedBtn.setAttribute('title', display);
     }
-    
-    
-    // Show controls (not used in simplified structure, but kept for compatibility)
-    show() {
-        this.startProgressUpdate();
+    /**
+     * Public alias — show control bar + navbar
+     */
+    reveal() {
         this.showControlBar();
     }
-    
-    // Hide controls (not used in simplified structure, but kept for compatibility)
-    hide() {
-        this.stopProgressUpdate();
+
+    /**
+     * Public alias — restart auto-hide timer
+     */
+    bumpAutoHide() {
+        this.scheduleAutoHide();
     }
     
-    // Show control bar and navbar - simplified
+    // Show control bar and navbar
     showControlBar() {
         const controlBar = document.querySelector('.custom-control-bar') || document.getElementById('customControlBar');
         if (controlBar) {
@@ -270,7 +343,7 @@ export class Controls {
         }
     }
     
-    // Hide control bar and navbar - simplified
+    // Hide control bar and navbar
     hideControlBar() {
         // Don't hide if dragging or video is paused
         if (this.isDragging || (appState?.get?.('isVideoPaused'))) return;
@@ -298,98 +371,33 @@ export class Controls {
         // Don't schedule auto-hide if we're dragging or video is paused
         if (this.isDragging || (appState?.get?.('isVideoPaused'))) return;
         
-        // Get auto-hide delay from constants (default to 3000ms if not available)
         const autoHideDelay = TimingConstants?.AUTO_HIDE_DELAY || 3000;
         
         this.controlBarAutoHideTimeout = setTimeout(() => {
-            // Double-check state before hiding
             if (!this.isDragging && appState?.get && !appState.get('isVideoPaused')) {
                 this.hideControlBar();
             }
         }, autoHideDelay);
     }
     
-    // Public method for external callers (fullscreen module)
-    scheduleAutoHideInternal() {
-        this.scheduleAutoHide();
-    }
-    
     setupAutoHide() {
+        if (this._autoHideAttached) return;
+
+        this.playerElement = document.getElementById('videoContainer') || this.playerElement;
         if (!this.playerElement) return;
+
+        this._autoHideAttached = true;
         
-        // Simple mousemove handler - show controls and schedule auto-hide
-        // Throttle to prevent constant timer resets
+        // Throttled mousemove on video container (hover path is primary; this is a backup)
         let lastMousemoveTime = 0;
         this.playerElement.addEventListener('mousemove', () => {
-            // Don't trigger auto-hide if we're dragging the progress bar
             if (this.isDragging) return;
-            
-            // Throttle mousemove - only process every 200ms
             const now = Date.now();
             if (now - lastMousemoveTime < 200) return;
             lastMousemoveTime = now;
-            
             this.showControlBar();
             this.scheduleAutoHide();
         });
-        
-        // Touch events for mobile - show controls and schedule auto-hide
-        let lastTouchTime = 0;
-        this.playerElement.addEventListener('touchstart', () => {
-            // Don't trigger auto-hide if we're dragging the progress bar
-            if (this.isDragging) return;
-            
-            // Throttle touch - only process every 200ms
-            const now = Date.now();
-            if (now - lastTouchTime < 200) return;
-            lastTouchTime = now;
-            
-            // Only show controls and schedule auto-hide if video is playing
-            // (If paused, controls should stay visible)
-            if (appState?.get && !appState.get('isVideoPaused')) {
-                this.showControlBar();
-                this.scheduleAutoHide();
-            }
-        }, { passive: true });
-        
-        // Note: Click blocker click/touch handlers are set up in setupClickBlocker()
-        
-        const controlBar = document.getElementById('customControlBar');
-        if (controlBar) {
-            // Prevent touch events on control bar from propagating to video tap handler
-            controlBar.addEventListener('touchstart', (e) => {
-                e.stopPropagation();
-            }, { passive: true });
-            
-            controlBar.addEventListener('touchend', (e) => {
-                e.stopPropagation();
-                // Show controls when interacting with control bar
-                this.showControlBar();
-                // Schedule auto-hide after interaction (if video is playing)
-                if (appState?.get && !appState.get('isVideoPaused')) {
-                    this.scheduleAutoHide();
-                }
-            }, { passive: false });
-            
-            controlBar.addEventListener('mouseenter', () => {
-                this.showControlBar();
-                this.clearAutoHide();
-            });
-            
-            controlBar.addEventListener('mouseleave', () => {
-                // Don't schedule auto-hide if we're dragging or if video is paused
-                if (this.isDragging || (appState?.get?.('isVideoPaused'))) return;
-                this.scheduleAutoHide();
-            });
-            
-            // Also prevent clicks on control bar from propagating
-            controlBar.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
-        
-        // Setup touch interaction for mobile
-        this.setupClickBlocker();
     }
     
     /**
@@ -439,12 +447,16 @@ export class Controls {
     }
     
     /**
-     * Handle video area tap/click - simplified
-     * @param {Event} e - Touch or click event
-     * @param {number} clientX - X coordinate (from touch or click)
-     * @param {number} clientY - Y coordinate (from touch or click)
+     * Handle video area tap/click
+     * - Mouse: always toggle play/pause (hover already shows controls)
+     * - Touch with controls hidden: show controls only
+     * - Touch with controls visible: toggle play/pause
+     * @param {Event} e
+     * @param {number} clientX
+     * @param {number} clientY
+     * @param {{ isTouch?: boolean }} options
      */
-    handleVideoTap(e, clientX, clientY) {
+    handleVideoTap(e, clientX, clientY, options = {}) {
         // Check if clicking on control surfaces - if so, don't handle
         let target = null;
         if (document.elementFromPoint) {
@@ -463,24 +475,17 @@ export class Controls {
         e.stopPropagation();
         e.stopImmediatePropagation(); // Stop all other handlers including YouTube's
         
-        // Simple check: is control bar hidden?
+        const isTouch = options.isTouch === true;
         const controlBar = document.querySelector('.custom-control-bar') || document.getElementById('customControlBar');
         const isHidden = controlBar?.classList.contains('hidden');
-        
-        // Debug: Log to help diagnose
-        // console.log('[Controls] handleVideoTap - isHidden:', isHidden, 'controlBar:', controlBar);
-        
-        if (isHidden) {
-            // Controls hidden - show them only (no pause)
-            // CRITICAL: Do NOT call any video player methods here
-            
-            // Check if video was paused by YouTube's click handler - if so, resume it
+
+        // Touch + hidden controls: reveal only (no pause) — mobile expected UX
+        if (isTouch && isHidden) {
             const videoPlayer = getVideoPlayer();
             if (videoPlayer?.isReady?.()) {
                 const playerState = videoPlayer.getPlayerState?.();
-                // If video was playing before tap but is now paused, resume it
+                // If video was paused by YouTube's click handler - resume it
                 if (appState?.get && !appState.get('isVideoPaused') && playerState === YT.PlayerState.PAUSED) {
-                    // Video was paused by YouTube - resume it immediately
                     setTimeout(() => {
                         videoPlayer.play?.();
                     }, 10);
@@ -492,87 +497,319 @@ export class Controls {
             if (navbarInstance?.show) {
                 navbarInstance.show();
             }
-            // Schedule auto-hide if video is playing
             if (appState?.get && !appState.get('isVideoPaused')) {
                 this.scheduleAutoHide();
             }
-            // Return immediately - do not proceed to play/pause logic
             return;
-        } else {
-            // Controls visible - toggle play/pause
-            const videoPlayer = getVideoPlayer();
-            if (!videoPlayer?.isReady?.()) {
-                return;
+        }
+
+        // Mouse click, or touch while controls are visible: toggle play/pause
+        const videoPlayer = getVideoPlayer();
+        if (!videoPlayer?.isReady?.()) {
+            return;
+        }
+
+        this.showControlBar();
+        videoPlayer.togglePlayPause?.();
+
+        const currentState = videoPlayer.getPlayerState?.();
+        if (currentState !== YT.PlayerState.PLAYING) {
+            setTimeout(() => {
+                if (videoPlayer.getPlayerState?.() === YT.PlayerState.PLAYING) {
+                    this.scheduleAutoHide();
+                }
+            }, 100);
+        }
+    }
+
+    /**
+     * Whether an interaction came from a touch surface
+     * @param {Event} e
+     * @returns {boolean}
+     */
+    isTouchEvent(e) {
+        if (!e) return false;
+        if (e.type && e.type.startsWith('touch')) return true;
+        if (e.pointerType === 'touch') return true;
+        if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return true;
+        return false;
+    }
+
+    /**
+     * Map X position to left / center / right scrub zone
+     * @param {number} clientX
+     * @returns {'left'|'center'|'right'}
+     */
+    getTapSide(clientX) {
+        const rect = this.clickBlocker?.getBoundingClientRect?.()
+            || this.playerElement?.getBoundingClientRect?.()
+            || { left: 0, width: window.innerWidth || 0 };
+        const width = rect.width || window.innerWidth || 1;
+        const x = clientX - (rect.left || 0);
+        const zone = TimingConstants?.SEEK_SIDE_ZONE ?? 0.33;
+        const ratio = x / width;
+        if (ratio <= zone) return 'left';
+        if (ratio >= 1 - zone) return 'right';
+        return 'center';
+    }
+
+    /**
+     * Playback time for UI / relative seek while a seek is still settling.
+     * Prevents the progress bar from snapping back to stale YouTube times.
+     * @param {number} playerTime
+     * @returns {number}
+     */
+    getEffectivePlaybackTime(playerTime) {
+        this.clearPendingSeekIfVideoChanged();
+
+        if (this.pendingSeekTime == null) {
+            return playerTime;
+        }
+
+        const now = Date.now();
+        const seekSettleMs = TimingConstants?.SEEK_SETTLE_MS ?? 750;
+        const elapsed = now - this.lastSeekAt;
+
+        // Player caught up to the optimistic target
+        if (Math.abs(playerTime - this.pendingSeekTime) < 0.85) {
+            this.pendingSeekTime = null;
+            return playerTime;
+        }
+
+        // Still within settle window — keep showing optimistic time
+        if (elapsed < seekSettleMs) {
+            return this.pendingSeekTime;
+        }
+
+        // Settle window expired; trust the player again
+        this.pendingSeekTime = null;
+        return playerTime;
+    }
+
+    /**
+     * Seek relative to current playback position.
+     * Uses an optimistic pending time so rapid arrow keys accumulate instead of
+     * re-reading a stale YouTube getCurrentTime() mid-seek.
+     * @param {number} seconds
+     */
+    seekRelative(seconds) {
+        const videoPlayer = getVideoPlayer();
+        if (!videoPlayer?.isReady?.() || !videoPlayer.seekTo) return;
+
+        try {
+            this.clearPendingSeekIfVideoChanged();
+
+            const playerTime = videoPlayer.getCurrentTime?.() || 0;
+            const duration = videoPlayer.getDuration?.() || 0;
+            if (!duration || isNaN(duration)) return;
+
+            const base = this.getEffectivePlaybackTime(playerTime);
+            const newTime = Math.max(0, Math.min(duration, base + seconds));
+
+            this.pendingSeekTime = newTime;
+            this.lastSeekAt = Date.now();
+            videoPlayer.seekTo(newTime);
+
+            const currentTimeEl = document.getElementById('currentTime');
+            if (currentTimeEl && formatTime) {
+                currentTimeEl.textContent = formatTime(newTime);
             }
-            
-            videoPlayer.togglePlayPause?.();
-            
-            // Schedule auto-hide if video will be playing
-            const currentState = videoPlayer.getPlayerState?.();
-            if (currentState !== YT.PlayerState.PLAYING) {
-                setTimeout(() => {
-                    if (videoPlayer.getPlayerState?.() === YT.PlayerState.PLAYING) {
-                        this.scheduleAutoHide();
-                    }
-                }, 100);
+            if (duration > 0) {
+                const fill = document.getElementById('customProgressFill');
+                if (fill) {
+                    fill.style.width = `${(newTime / duration) * 100}%`;
+                }
             }
+
+            this.showControlBar();
+            if (appState?.get && !appState.get('isVideoPaused')) {
+                this.scheduleAutoHide();
+            }
+        } catch (error) {
+            // Silently handle seek errors
         }
     }
     
     /**
-     * Setup hover handlers for showing controls on mouse hover
+     * Setup hover handlers for showing controls on mouse move/hover
      */
     setupHoverHandlers() {
-        if (!this.clickBlocker) return;
-        
-        // Remove existing hover handlers if any (to avoid duplicates)
-        // We'll use a simple approach: check if handlers are already attached
-        if (this.clickBlocker.hasAttribute('data-hover-handlers-attached')) return;
-        
-        this.clickBlocker.setAttribute('data-hover-handlers-attached', 'true');
-        
-        // Hover handlers - show controls on hover
-        this.clickBlocker.addEventListener('mouseenter', () => {
+        if (this._hoverHandlersAttached) return;
+
+        const hoverTarget = document.querySelector('.player-view') || this.clickBlocker;
+        if (!hoverTarget) return;
+
+        this._hoverHandlersAttached = true;
+
+        const showOnMouseMove = (e) => {
             if (this.isDragging) return;
+            if (this.isTouchEvent(e)) return;
             this.showControlBar();
             this.clearAutoHide();
-        });
-        
-        this.clickBlocker.addEventListener('mouseleave', () => {
+            if (appState?.get && !appState.get('isVideoPaused')) {
+                this.scheduleAutoHide();
+            }
+        };
+
+        const hideOnMouseLeave = () => {
             if (this.isDragging || (appState?.get?.('isVideoPaused'))) return;
             this.scheduleAutoHide();
-        });
+        };
+
+        hoverTarget.addEventListener('mousemove', showOnMouseMove);
+        hoverTarget.addEventListener('mouseenter', showOnMouseMove);
+        hoverTarget.addEventListener('mouseleave', hideOnMouseLeave);
+
+        if (this.clickBlocker && this.clickBlocker !== hoverTarget) {
+            this.clickBlocker.addEventListener('mousemove', showOnMouseMove);
+            this.clickBlocker.addEventListener('mouseenter', showOnMouseMove);
+        }
     }
     
     /**
-     * Setup click blocker - simplified
-     * - When controls are hidden: tap shows controls
-     * - When controls are visible: tap toggles play/pause
+     * Setup click blocker interactions
+     * - Mouse click: toggle play/pause (controls shown via hover)
+     * - Touch: first tap shows controls; tap again toggles play/pause
+     * - Double-tap left/right: seek ± SEEK_SECONDS
+     * - Double-tap center / mouse dblclick: toggle fullscreen
      */
     setupClickBlocker() {
         if (!this.clickBlocker || this.clickBlocker.hasAttribute('data-handler-attached')) return;
         
         this.clickBlocker.setAttribute('data-handler-attached', 'true');
-        
-        // Single handler for both touch and click
-        const handleInteraction = (e) => {
-            // Get coordinates from touch or mouse event
-            const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
-            const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY ?? 0;
-            
-            // Prevent YouTube iframe from receiving the event
+
+        const seekSeconds = TimingConstants?.SEEK_SECONDS ?? 10;
+        const doubleDelay = TimingConstants?.DOUBLE_CLICK_DELAY ?? 300;
+
+        const handleTouchEnd = (e) => {
+            const touch = e.changedTouches?.[0];
+            const clientX = touch?.clientX ?? 0;
+            const clientY = touch?.clientY ?? 0;
+
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            
-            this.handleVideoTap(e, clientX, clientY);
+
+            this.markTouchAction();
+
+            const side = this.getTapSide(clientX);
+            const now = Date.now();
+            const isDoubleTap = this.lastSideTap.side === side
+                && (now - this.lastSideTap.time) < doubleDelay;
+
+            if (isDoubleTap) {
+                if (this.pendingTapTimeout) {
+                    clearTimeout(this.pendingTapTimeout);
+                    this.pendingTapTimeout = null;
+                }
+                this.lastSideTap = { time: 0, side: null };
+
+                if (side === 'left') {
+                    this.seekRelative(-seekSeconds);
+                } else if (side === 'right') {
+                    this.seekRelative(seekSeconds);
+                } else {
+                    const fullscreen = getFullscreen();
+                    if (fullscreen?.toggle && fullscreen.getIsSupported?.()) {
+                        fullscreen.toggle();
+                        this.reveal();
+                        this.bumpAutoHide();
+                    }
+                }
+                return;
+            }
+
+            this.lastSideTap = { time: now, side };
+
+            if (this.pendingTapTimeout) {
+                clearTimeout(this.pendingTapTimeout);
+            }
+            this.pendingTapTimeout = setTimeout(() => {
+                this.pendingTapTimeout = null;
+                this.handleVideoTap(e, clientX, clientY, { isTouch: true });
+            }, doubleDelay);
+        };
+
+        const handleMouseClick = (e) => {
+            if (this.isGhostClick()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            const clientX = e.clientX ?? 0;
+            const clientY = e.clientY ?? 0;
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            this.handleVideoTap(e, clientX, clientY, { isTouch: false });
+        };
+
+        const handleDblClick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const fullscreen = getFullscreen();
+            if (fullscreen?.toggle && fullscreen.getIsSupported?.()) {
+                fullscreen.toggle();
+                this.reveal();
+                this.bumpAutoHide();
+            }
         };
         
-        // Touch handler
-        this.clickBlocker.addEventListener('touchend', handleInteraction, { passive: false, capture: true });
-        
-        // Click handler
-        this.clickBlocker.addEventListener('click', handleInteraction, { capture: true });
+        this.clickBlocker.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+        this.clickBlocker.addEventListener('click', handleMouseClick, { capture: true });
+        this.clickBlocker.addEventListener('dblclick', handleDblClick);
+    }
+
+    /**
+     * Keyboard shortcuts — Space, F, arrows
+     */
+    setupKeyboardShortcuts() {
+        if (this._keyboardAttached) return;
+        this._keyboardAttached = true;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            const videoPlayer = getVideoPlayer();
+            const fullscreen = getFullscreen();
+            const seekSeconds = TimingConstants?.SEEK_SECONDS ?? 10;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (videoPlayer?.togglePlayPause) {
+                    videoPlayer.togglePlayPause();
+                }
+                this.reveal();
+                this.bumpAutoHide();
+                return;
+            }
+
+            if (e.code === 'KeyF') {
+                e.preventDefault();
+                if (fullscreen?.toggle && fullscreen.getIsSupported?.()) {
+                    fullscreen.toggle();
+                }
+                this.reveal();
+                this.bumpAutoHide();
+                return;
+            }
+
+            if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                this.seekRelative(-seekSeconds);
+                return;
+            }
+
+            if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                this.seekRelative(seekSeconds);
+            }
+        });
     }
     
     // Update controls state
@@ -620,6 +857,7 @@ export class Controls {
                 if (playIcon) playIcon.classList.remove('d-none');
                 if (pauseIcon) pauseIcon.classList.add('d-none');
                 this.hideCatGif();
+                this.clearPendingSeek();
                 // Stop progress update when video ends
                 this.stopProgressUpdate();
             } else {
@@ -743,6 +981,8 @@ export class Controls {
                 // Seek video (UI already updated, so this won't cause visible lag)
                 if (videoPlayer?.seekTo) {
                     videoPlayer.seekTo(newTime);
+                    this.pendingSeekTime = newTime;
+                    this.lastSeekAt = Date.now();
                 }
             }
         } catch (error) {
@@ -772,10 +1012,11 @@ export class Controls {
             if (this.isDragging) return;
             
             try {
-                const currentTime = videoPlayer.getCurrentTime?.();
+                const playerTime = videoPlayer.getCurrentTime?.();
                 const duration = videoPlayer.getDuration?.();
                 
-                if (duration && !isNaN(currentTime)) {
+                if (duration && !isNaN(playerTime)) {
+                    const currentTime = this.getEffectivePlaybackTime(playerTime);
                     const progressFill = document.getElementById('customProgressFill');
                     if (progressFill) {
                         const percent = (currentTime / duration) * 100;
@@ -799,7 +1040,7 @@ export class Controls {
             } catch (error) {
                 // Silently handle progress update errors
             }
-        }, 100);
+        }, TimingConstants?.PROGRESS_UPDATE_INTERVAL || 100);
     }
     
     stopProgressUpdate() {

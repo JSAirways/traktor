@@ -399,10 +399,10 @@
     top: 0;
 }
 
-.player-view:fullscreen .custom-controls,
-.player-view:-webkit-full-screen .custom-controls,
-.player-view:-moz-full-screen .custom-controls,
-.player-view:-ms-fullscreen .custom-controls {
+.player-view:fullscreen .controls-layer,
+.player-view:-webkit-full-screen .controls-layer,
+.player-view:-moz-full-screen .controls-layer,
+.player-view:-ms-fullscreen .controls-layer {
     position: fixed;
     width: 100vw;
     height: 100vh;

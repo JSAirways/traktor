@@ -2,7 +2,6 @@
     Player Structure Component
     
     Player structure containing video container, controls, and control bar.
-    Contains the player iframe and all overlays.
     
     @prop object $user - User object
     @prop object|null $video - Video object (for single video player)
@@ -27,7 +26,10 @@
 ])
 
 <x-player.video-container :catGifs="$catGifs" />
-<x-player.control-bar />
+
+<div class="controls-layer" data-layer="controls">
+    <x-player.control-bar />
+</div>
 
 @php
     $playlistData = null;
@@ -47,7 +49,6 @@
                 ];
             })->toArray(),
         ];
-        // Get current video ID from playlist videos
         if (isset($videos[$currentIndex ?? 0])) {
             $currentVideoId = $videos[$currentIndex ?? 0]->video_id;
         }
@@ -65,7 +66,3 @@
         data-current-index="{{ $currentIndex ?? 0 }}"
     @endif
 ></script>
-
-
-
-

@@ -37,7 +37,7 @@ export class GalleryChannels {
         this.currentContentType = 'all';
         this.offcanvasInstance = null;
         this.channels = [];
-        this.username = null;
+        this.profile_name = null;
         
         // Debounce filter operations to reduce unnecessary re-renders
         this.debouncedFilterContent = debounce ? debounce(() => {
@@ -91,7 +91,7 @@ export class GalleryChannels {
      */
     loadChannelData() {
         this.channels = getScriptDataJson?.('data-channels', []) || [];
-        this.username = getScriptData?.('data-username') || null;
+        this.profile_name = getScriptData?.('data-profile-name') || null;
     }
     
     /**
@@ -479,8 +479,8 @@ export class GalleryChannels {
         const channelId = this.getChannelFromUrl();
         const channelName = this.getChannelName(channelId);
         
-        if (this.username) {
-            const baseTitle = `${this.username}'s Traktor`;
+        if (this.profile_name) {
+            const baseTitle = `${this.profile_name}'s Traktor`;
             if (channelId === 'all' || !channelId) {
                 document.title = baseTitle;
             } else {

@@ -39,7 +39,7 @@ class DeviceController extends Controller
                 },
                 'children'
             ])
-            ->orderBy('username');
+            ->orderBy('profile_name');
         
         if ($userFilter) {
             $query->where('id', $userFilter);
@@ -50,7 +50,7 @@ class DeviceController extends Controller
         // Get all parents for filter dropdown
         $allParents = User::whereNull('parent_id')
             ->whereHas('deviceRegistrations')
-            ->orderBy('username')
+            ->orderBy('profile_name')
             ->get();
 
         // Resolve current device from cookie so we can highlight it in the UI
@@ -74,7 +74,7 @@ class DeviceController extends Controller
         
         // Get all children of the parent
         $parent = $device->parent;
-        $allChildren = $parent->children()->orderBy('username')->get();
+        $allChildren = $parent->children()->orderBy('profile_name')->get();
         
         // Get currently visible children
         $visibleChildren = $device->childVisibility()

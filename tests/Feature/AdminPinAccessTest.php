@@ -23,7 +23,7 @@ class AdminPinAccessTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('admin.profile.update'), [
             'email' => $user->email,
-            'username' => $user->username,
+            'profile_name' => $user->profile_name,
             'password' => '',
             'use_admin_pin' => 'on',
             'admin_pin' => '1234',
@@ -43,7 +43,7 @@ class AdminPinAccessTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('admin.profile.update'), [
             'email' => $user->email,
-            'username' => $user->username,
+            'profile_name' => $user->profile_name,
             'password' => '',
         ]);
 
@@ -57,7 +57,7 @@ class AdminPinAccessTest extends TestCase
 
         $response = $this->actingAs($user)->from(route('admin.profile.edit'))->put(route('admin.profile.update'), [
             'email' => $user->email,
-            'username' => $user->username,
+            'profile_name' => $user->profile_name,
             'password' => '',
             'use_admin_pin' => 'on',
             'admin_pin' => '12',
@@ -189,10 +189,10 @@ class AdminPinAccessTest extends TestCase
         $this->withoutMiddleware(EncryptCookies::class);
         $this->mockRegisteredDevice($this->makeRegisteredDevice($parent));
 
-        $otherUsername = 'other-'.Str::lower(Str::random(6));
+        $otherProfileName = 'other-'.Str::lower(Str::random(6));
         $other = User::forceCreate([
-            'username' => $otherUsername,
-            'slug' => $otherUsername,
+            'profile_name' => $otherProfileName,
+            'slug' => $otherProfileName,
             'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => Hash::make('secret-pass'),
             'role' => 'user',
@@ -282,11 +282,11 @@ class AdminPinAccessTest extends TestCase
 
     private function makeApprovedParent(): User
     {
-        $username = 'parent-'.Str::lower(Str::random(6));
+        $profileName = 'parent-'.Str::lower(Str::random(6));
 
         $user = User::forceCreate([
-            'username' => $username,
-            'slug' => $username,
+            'profile_name' => $profileName,
+            'slug' => $profileName,
             'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => Hash::make('secret-pass'),
             'role' => 'user',
@@ -307,10 +307,10 @@ class AdminPinAccessTest extends TestCase
         $parent = $this->makeApprovedParent();
         $parent->setAdminPin('1234');
 
-        $childUsername = 'child-'.Str::lower(Str::random(6));
+        $childProfileName = 'child-'.Str::lower(Str::random(6));
         $child = User::forceCreate([
-            'username' => $childUsername,
-            'slug' => $childUsername,
+            'profile_name' => $childProfileName,
+            'slug' => $childProfileName,
             'email' => Str::lower(Str::random(8)).'@example.test',
             'password' => Hash::make('secret-pass'),
             'role' => 'user',

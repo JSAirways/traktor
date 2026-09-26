@@ -19,7 +19,7 @@
                             class="btn btn-transparent p-0 text-decoration-none d-flex flex-column align-items-center border-0" 
                             data-bs-toggle="modal" 
                             data-bs-target="#pinEntryModal"
-                            data-child-username="{{ $child->username }}"
+                            data-child-profile-name="{{ $child->profile_name }}"
                             data-child-slug="{{ $child->slug }}">
                         <x-ui.user-avatar variant="tile" :user="$child" :showName="true" />
                     </button>

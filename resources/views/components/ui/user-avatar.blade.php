@@ -3,7 +3,7 @@
     'user' => null,        // User object (for tile variant or when resolving profile picture)
     'image' => null,       // Direct image URL
     'title' => null,       // Title text (for headers)
-    'username' => null,    // Username text (for tiles, alternative to title)
+    'profileName' => null, // Profile name text (for tiles, alternative to title)
     'containerId' => null, // Container ID for JavaScript population
     'icon' => null,        // Icon class (e.g., 'bi-plus') for profile variant without image
     'size' => 'normal',    // Size for tile variant: 'normal' | 'large' | 'small'
@@ -39,15 +39,15 @@
         }
     }
     
-    // Resolve username/title from user object if provided
-    $resolvedUsername = $username;
+    // Resolve profile name/title from user object if provided
+    $resolvedProfileName = $profileName;
     $resolvedTitle = $title;
     if ($user && $isTile) {
-        // For tile variant, use username for display
-        if (!$resolvedTitle && isset($user->username)) {
-            $resolvedTitle = $user->username;
-        } elseif (!$resolvedUsername && isset($user->username)) {
-            $resolvedUsername = $user->username;
+        // For tile variant, use profile name for display
+        if (!$resolvedTitle && isset($user->profile_name)) {
+            $resolvedTitle = $user->profile_name;
+        } elseif (!$resolvedProfileName && isset($user->profile_name)) {
+            $resolvedProfileName = $user->profile_name;
         }
     }
     
@@ -101,7 +101,7 @@
             {{-- Render circle if image/icon provided, or if profile variant with containerId (for JS population) --}}
             <div class="{{ $circleSizeClass }} bg-dark {{ $borderClass }} text-light d-flex align-items-center justify-content-center overflow-hidden">
                 @if($resolvedImage)
-                    <img src="{{ $resolvedImage }}" alt="{{ $resolvedTitle ?? $resolvedUsername ?? __('common.profile') }}" class="user-avatar-image {{ $isSmall ? 'user-avatar-image-sm' : '' }}" />
+                    <img src="{{ $resolvedImage }}" alt="{{ $resolvedTitle ?? $resolvedProfileName ?? __('common.profile') }}" class="user-avatar-image {{ $isSmall ? 'user-avatar-image-sm' : '' }}" />
                 @elseif($icon)
                     <i class="{{ $icon }} fs-1 text-success"></i>
                 @elseif($isProfile && $containerId)
@@ -120,11 +120,11 @@
     @endif
     
     @if($isTile && $showName)
-        {{-- Tile variant: show name (title) or username as fallback --}}
+        {{-- Tile variant: show name (title) or profile name as fallback --}}
         @if($resolvedTitle)
             <h5 class="mt-2 mb-0 text-light">{{ $resolvedTitle }}</h5>
-        @elseif($resolvedUsername)
-            <h5 class="mt-2 mb-0 text-light">{{ $resolvedUsername }}</h5>
+        @elseif($resolvedProfileName)
+            <h5 class="mt-2 mb-0 text-light">{{ $resolvedProfileName }}</h5>
         @endif
     @elseif($resolvedTitle && !$isTile)
         {{-- Non-tile variants: show title --}}

@@ -14,9 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             
             // Get stored state from sessionStorage
-            const storedUsername = sessionStorage.getItem(SessionConstants.PASSWORD_FORM_USERNAME);
-            
-            if (storedUsername) {
+            const storedEmail = sessionStorage.getItem(SessionConstants.PASSWORD_FORM_EMAIL);
+            const storedProfileName = sessionStorage.getItem(SessionConstants.PASSWORD_FORM_PROFILE_NAME);
+
+            if (storedEmail || storedProfileName) {
                 // Set flag to restore modal on welcome page
                 sessionStorage.setItem(SessionConstants.RESTORE_PASSWORD_MODAL, 'true');
             }

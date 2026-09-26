@@ -47,18 +47,20 @@ body.modal-open {
     overflow: hidden;
 }
 
-/* Blur the main content area, navbar, video player, and controls when modal is open */
-body.modal-open .welcome-content,
-body.modal-open .container,
-body.modal-open .gallery-view,
-body.modal-open .navbar,
-body.modal-open nav,
-body.modal-open .player-view,
-body.modal-open #videoContainer,
-body.modal-open #player,
-body.modal-open .controls-layer,
-body.modal-open .custom-control-bar,
-body.modal-open .options-menu-offcanvas {
+/* Blur the main content area, navbar, video player, and controls when modal is open.
+   Skip when only the profile-picture picker is open — that modal lives inside page
+   content, and a parent filter cannot be undone on children. */
+body.modal-open:not(:has(.profile-picture-modal.show)) .welcome-content,
+body.modal-open:not(:has(.profile-picture-modal.show)) .container,
+body.modal-open:not(:has(.profile-picture-modal.show)) .gallery-view,
+body.modal-open:not(:has(.profile-picture-modal.show)) .navbar,
+body.modal-open:not(:has(.profile-picture-modal.show)) nav,
+body.modal-open:not(:has(.profile-picture-modal.show)) .player-view,
+body.modal-open:not(:has(.profile-picture-modal.show)) #videoContainer,
+body.modal-open:not(:has(.profile-picture-modal.show)) #player,
+body.modal-open:not(:has(.profile-picture-modal.show)) .controls-layer,
+body.modal-open:not(:has(.profile-picture-modal.show)) .custom-control-bar,
+body.modal-open:not(:has(.profile-picture-modal.show)) .options-menu-offcanvas {
     filter: blur(10px);
     transition: filter 0.3s ease-in-out;
 }

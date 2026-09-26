@@ -40,7 +40,7 @@ class MigrateAndreaChildToParent extends Command
         }
 
         // Find the parent profile "Andrea"
-        $andreaParent = User::where('username', 'Andrea')
+        $andreaParent = User::where('profile_name', 'Andrea')
             ->whereNull('parent_id')
             ->first();
 
@@ -49,9 +49,8 @@ class MigrateAndreaChildToParent extends Command
             return 1;
         }
 
-        // Find the child profile "Andrea" (may have different username like "andrea-1")
-        $andreaChild = User::where('name', 'Andrea')
-            ->whereNotNull('parent_id')
+        // Find the child profile "Andrea" by profile_name under this parent
+        $andreaChild = User::where('profile_name', 'Andrea')
             ->where('parent_id', $andreaParent->id)
             ->first();
 

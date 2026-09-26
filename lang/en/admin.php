@@ -32,10 +32,11 @@ return [
     // Form labels
     'email_label' => 'Email',
     'username_label' => 'Username',
+    'profile_name_label' => 'Profile name',
     'password_label' => 'Password',
     'password_leave_blank' => 'Password (leave blank to keep current)',
-    'admin_access_pin' => 'Admin Access PIN',
-    'admin_access_pin_help' => 'Use a 4-digit PIN instead of your password when opening Settings on a registered device.',
+    'admin_access_pin' => 'Dashboard Access PIN',
+    'admin_access_pin_help' => 'Use a 4-digit PIN instead of your password when opening the dashboard on a registered device.',
     'profile_selection_pin' => 'Profile Selection PIN',
     'profile_selection_pin_help' => 'Use a 4-digit PIN when opening this profile from the family profile selection screen.',
     'hide_from_profile_selection' => 'Hide from Profile Selection',
@@ -220,9 +221,9 @@ return [
     
     // PIN Management
     'viewing_pin' => 'Viewing PIN',
-    'viewing_pin_for' => 'Viewing PIN for :username',
+    'viewing_pin_for' => 'Viewing PIN for :profile_name',
     'pin_required_info' => 'This PIN is required for the child to access their viewing page. You can always view it again from the child\'s edit page.',
-    'pin_for' => 'PIN for :username',
+    'pin_for' => 'PIN for :profile_name',
     'share_pin_info' => 'Share this PIN with the child to access their viewing page.',
     'pin_required_at_url' => 'This PIN is required to access the viewing page at:',
     'back_to_edit_user' => 'Back to Edit User',

@@ -116,7 +116,7 @@ function getRandomCatGif() {
 /**
  * Displays the user selection grid with registered users
  * Uses template cloning instead of createElement/innerHTML (follows best practices)
- * @param {Array} users - Array of user objects with username, device_name, profile_picture
+ * @param {Array} users - Array of user objects with profileName, device_name, profile_picture
  */
 function showUserSelection(users) {
     // Always hide loading view first, even if templates are missing
@@ -149,7 +149,7 @@ function showUserSelection(users) {
         const tileDiv = userTile.querySelector('.col-auto');
         const tile = userTile.querySelector('.user-avatar-tile');
         const img = userTile.querySelector('img');
-        const usernameH5 = userTile.querySelector('h5');
+        const profileNameH5 = userTile.querySelector('h5');
         const deviceNameSmall = userTile.querySelector('small');
         
         // Determine profile picture
@@ -172,10 +172,10 @@ function showUserSelection(users) {
             img.src = profileImgSrc;
         }
         
-        // Set username and device name
+        // Set profile name and device name
         const deviceName = user.device_name || DeviceConstants?.DEFAULT_DEVICE_NAME;
-        if (usernameH5) {
-            usernameH5.textContent = user.username;
+        if (profileNameH5) {
+            profileNameH5.textContent = user.profile_name;
         }
         if (deviceNameSmall) {
             deviceNameSmall.textContent = deviceName;
@@ -184,7 +184,7 @@ function showUserSelection(users) {
         // Set data attributes for Bootstrap modal and user data
         if (tile) {
             tile.setAttribute('data-user-email', user.email || '');
-            tile.setAttribute('data-user-username', user.username || '');
+            tile.setAttribute('data-user-profile-name', user.profile_name || '');
             tile.setAttribute('data-user-device-name', deviceName);
             tile.setAttribute('data-user-profile-picture', profilePictureFilename);
         }
@@ -242,11 +242,11 @@ function handleModalShow(e) {
     
     // Check if it's a user tile (has data-user-email attribute)
     const email = trigger.getAttribute('data-user-email');
-    const username = trigger.getAttribute('data-user-username');
+    const profileName = trigger.getAttribute('data-user-profile-name');
     const deviceName = trigger.getAttribute('data-user-device-name');
     const profilePicture = trigger.getAttribute('data-user-profile-picture');
     
-    if (!email || !username) {
+    if (!email || !profileName) {
         // Not a valid user tile - don't populate modal
         return;
     }
@@ -259,7 +259,7 @@ function handleModalShow(e) {
     }
     
     // Populate modal with user data
-    openPasswordLoginModal(email, username, deviceName, profilePicture);
+    openPasswordLoginModal(email, profileName, deviceName, profilePicture);
 }
 
 // "Other" option is now a simple link - no JavaScript handler needed
@@ -276,16 +276,19 @@ function storePasswordFormState() {
     const profileImg = profilePictureContainer?.querySelector('img');
     const profilePictureSrc = profileImg?.src || '';
     
-    // Get actual device name from display title (format: "username (device name)")
+    // Get profile name and device name from display title (format: "profile name (device name)")
     // The hidden input contains the password-only login flag which is not the display name
-    const usernameDisplay = document.getElementById('passwordLoginModalUsernameDisplay');
+    const profileNameDisplay = document.getElementById('passwordLoginModalProfileNameDisplay');
     let deviceName = DeviceConstants?.DEFAULT_DEVICE_NAME;
-    if (usernameDisplay?.textContent) {
-        const titleText = usernameDisplay.textContent;
-        // Extract device name from parentheses: "username (device name)"
-        const match = titleText.match(/\(([^)]+)\)/);
-        if (match?.[1]) {
-            deviceName = match[1].trim();
+    let profileName = '';
+    if (profileNameDisplay?.textContent) {
+        const titleText = profileNameDisplay.textContent.trim();
+        const match = titleText.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+        if (match) {
+            profileName = match[1].trim();
+            deviceName = match[2].trim();
+        } else if (titleText) {
+            profileName = titleText;
         }
     }
     
@@ -305,6 +308,9 @@ function storePasswordFormState() {
         if (SessionConstants) {
             sessionStorage.setItem(SessionConstants.PASSWORD_FORM_EMAIL, email);
             sessionStorage.setItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME, deviceName);
+            if (profileName) {
+                sessionStorage.setItem(SessionConstants.PASSWORD_FORM_PROFILE_NAME, profileName);
+            }
             if (profilePictureFilename) {
                 sessionStorage.setItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE, profilePictureFilename);
             }
@@ -315,15 +321,15 @@ function storePasswordFormState() {
 /**
  * Opens the password login modal with user data
  * @param {string} email - The email to submit (for authentication)
- * @param {string} username - The username to display
+ * @param {string} profileName - The profile name to display
  * @param {string} deviceName - The device name to display and submit
  * @param {string} profilePictureFilename - The profile picture filename to display
  */
-function openPasswordLoginModal(email, username, deviceName, profilePictureFilename) {
+function openPasswordLoginModal(email, profileName, deviceName, profilePictureFilename) {
     // Set form values in modal
     const modalEmail = document.getElementById('passwordLoginModalEmail');
     const modalDeviceName = document.getElementById('passwordLoginModalDeviceName');
-    const modalUsernameDisplay = document.getElementById('passwordLoginModalUsernameDisplay');
+    const modalProfileNameDisplay = document.getElementById('passwordLoginModalProfileNameDisplay');
     
     if (modalEmail) modalEmail.value = email;
     // IMPORTANT: Always set device_name to the password-only login flag for password-only login
@@ -332,9 +338,9 @@ function openPasswordLoginModal(email, username, deviceName, profilePictureFilen
         modalDeviceName.value = DeviceConstants.PASSWORD_ONLY_LOGIN_FLAG;
     }
     
-    // Update title to show: username (device name) - use actual device name for display only
-    const titleText = `${username} (${deviceName || DeviceConstants?.DEFAULT_DEVICE_NAME || ''})`;
-    if (modalUsernameDisplay) modalUsernameDisplay.textContent = titleText;
+    // Update title to show: profile name (device name) - use actual device name for display only
+    const titleText = `${profileName} (${deviceName || DeviceConstants?.DEFAULT_DEVICE_NAME || ''})`;
+    if (modalProfileNameDisplay) modalProfileNameDisplay.textContent = titleText;
     
     // Store profile picture data to set after modal is shown
     // Note: catGifBasePath is read fresh in the callback to ensure it's initialized
@@ -409,7 +415,7 @@ function openPasswordLoginModal(email, username, deviceName, profilePictureFilen
                     // Set the image source if we have one
                     if (imageSrc) {
                         img.src = imageSrc;
-                        img.alt = username || getTranslation?.('common.profile', 'Profile') || 'Profile';
+                        img.alt = profileName || getTranslation?.('common.profile', 'Profile') || 'Profile';
                         // Show the image using Bootstrap classes
                         img.classList.remove('d-none');
                         // Ensure circle is visible
@@ -460,24 +466,24 @@ function openPasswordLoginModal(email, username, deviceName, profilePictureFilen
 /**
  * Opens the password login modal from a toast notification link
  * @param {string} email - The user's email (for authentication)
- * @param {string} username - The username (for display)
+ * @param {string} profileName - The profile name (for display)
  * @param {string} deviceName - The device name
  * @param {string} profilePictureFilename - Optional profile picture filename
  */
-function openLoginModalFromToast(email, username, deviceName, profilePictureFilename) {
-    // If email is provided, use it directly; otherwise try to find user by username
+function openLoginModalFromToast(email, profileName, deviceName, profilePictureFilename) {
+    // If email is provided, use it directly; otherwise try to find user by profile name
     let user = null;
     let profilePicture = '';
     let finalEmail = email || '';
-    let finalUsername = username || '';
+    let finalProfileName = profileName || '';
     
     if (registeredUsers && registeredUsers.length > 0) {
         if (email) {
             // Find by email (preferred)
             user = registeredUsers.find(u => u.email === email);
-        } else if (username) {
-            // Fallback: find by username
-            user = registeredUsers.find(u => u.username === username);
+        } else if (profileName) {
+            // Fallback: find by profile name
+            user = registeredUsers.find(u => u.profile_name === profileName);
         }
     }
     
@@ -485,9 +491,9 @@ function openLoginModalFromToast(email, username, deviceName, profilePictureFile
         if (user.profile_picture) {
             profilePicture = user.profile_picture;
         }
-        // Use email and username from user object if found
+        // Use email and profile name from user object if found
         finalEmail = user.email || finalEmail;
-        finalUsername = user.username || finalUsername;
+        finalProfileName = user.profile_name || finalProfileName;
     }
     
     // Use provided profile picture if available, otherwise use found one
@@ -501,7 +507,7 @@ function openLoginModalFromToast(email, username, deviceName, profilePictureFile
         if (!deviceUid || !browserData) {
             ensureDeviceUidInForms();
         }
-        openPasswordLoginModal(finalEmail, finalUsername, deviceName, profilePicture);
+        openPasswordLoginModal(finalEmail, finalProfileName, deviceName, profilePicture);
     }
 }
 
@@ -562,7 +568,7 @@ function checkRegisteredUsers() {
         
         ensureDeviceUidInForms();
         
-        // Check for registered users to get profile picture and display username
+        // Check for registered users to get profile picture and display profile name
         fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
             .then((response) => {
                 registeredUsers = extractUsersFromResponse(response);
@@ -578,7 +584,7 @@ function checkRegisteredUsers() {
                 
                 openPasswordLoginModal(
                     oldEmail,
-                    user?.username || '',
+                    user?.profile_name || '',
                     oldDeviceName,
                     profilePicture
                 );
@@ -673,10 +679,10 @@ function checkRegisteredUsers() {
  * Uses template cloning instead of createElement/innerHTML (follows best practices)
  * @param {string} message - The error message
  * @param {string} email - The user's email (for authentication)
- * @param {string} username - The username (for display)
+ * @param {string} profileName - The profile name (for display)
  * @param {string} deviceName - The device name
  */
-function showDuplicateDeviceToast(message, email, username, deviceName) {
+function showDuplicateDeviceToast(message, email, profileName, deviceName) {
     // Get toast container (should exist in Blade template)
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) return;
@@ -710,16 +716,16 @@ function showDuplicateDeviceToast(message, email, username, deviceName) {
     loginLink.href = '#';
     loginLink.className = 'toast-login-link text-white text-decoration-underline fw-bold';
     loginLink.setAttribute('data-email', email || '');
-    loginLink.setAttribute('data-username', username || '');
+    loginLink.setAttribute('data-profile-name', profileName || '');
     loginLink.setAttribute('data-device-name', deviceName || DeviceConstants?.DEFAULT_DEVICE_NAME || '');
-    loginLink.textContent = t?.('auth.log_in_as', { username: username || email || 'user' }) || 'Log in';
+    loginLink.textContent = t?.('auth.log_in_as', { profile_name: profileName || email || 'user' }) || 'Log in';
     
     // Add click handler
     loginLink.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         const linkEmail = loginLink.getAttribute('data-email');
-        const linkUsername = loginLink.getAttribute('data-username');
+        const linkProfileName = loginLink.getAttribute('data-profile-name');
         const linkDeviceName = loginLink.getAttribute('data-device-name');
         // Use setTimeout to ensure event handling works
         setTimeout(() => {
@@ -729,14 +735,14 @@ function showDuplicateDeviceToast(message, email, username, deviceName) {
                 const user = registeredUsers?.find(u => u.email === linkEmail);
                 if (user) {
                     // Pass profile picture to modal
-                    openLoginModalFromToast(user.email, user.username, linkDeviceName, user.profile_picture || '');
+                    openLoginModalFromToast(user.email, user.profile_name, linkDeviceName, user.profile_picture || '');
                 } else {
-                    // Fallback: use email as username for display
-                    openLoginModalFromToast(linkEmail, linkUsername || linkEmail, linkDeviceName, '');
+                    // Fallback: use email as profile name for display when lookup fails
+                    openLoginModalFromToast(linkEmail, linkProfileName || linkEmail, linkDeviceName, '');
                 }
-            } else if (linkUsername) {
-                // Fallback to old behavior (lookup by username)
-                openLoginModalFromToast(linkUsername, linkDeviceName);
+            } else if (linkProfileName) {
+                // Lookup by profile name when email is unavailable
+                openLoginModalFromToast('', linkProfileName, linkDeviceName, '');
             }
         }, 0);
     }, false);
@@ -1080,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showDuplicateDeviceToast(
                         message,
                         duplicateDeviceError.email,
-                        duplicateDeviceError.username || duplicateDeviceError.email, // Use username if available, fallback to email
+                        duplicateDeviceError.profile_name || duplicateDeviceError.email,
                         duplicateDeviceError.device_name
                     );
                 
@@ -1092,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showDuplicateDeviceToast(
                         message,
                         duplicateDeviceError.email || '',
-                        duplicateDeviceError.username || '',
+                        duplicateDeviceError.profile_name || '',
                         duplicateDeviceError.device_name || ''
                     );
                     
@@ -1114,13 +1120,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const passwordLoginModalField = document.getElementById('passwordLoginModalPassword');
         const passwordLoginModal = document.getElementById('passwordLoginModal');
         if (passwordLoginModalField?.classList.contains('is-invalid') && passwordLoginModal) {
-            // Get email, username, and device name from hidden inputs and display
+            // Get email, profileName, and device name from hidden inputs and display
             const modalEmailInput = document.getElementById('passwordLoginModalEmail');
             const modalEmail = modalEmailInput?.value || '';
             const modalDeviceNameInput = document.getElementById('passwordLoginModalDeviceName');
             const modalDeviceName = modalDeviceNameInput?.value || '';
-            const modalUsernameDisplay = document.getElementById('passwordLoginModalUsernameDisplay');
-            const username = modalUsernameDisplay?.textContent ? modalUsernameDisplay.textContent.split(' (')[0] : ''; // Extract username from display
+            const modalProfileNameDisplay = document.getElementById('passwordLoginModalProfileNameDisplay');
+            const profileName = modalProfileNameDisplay?.textContent ? modalProfileNameDisplay.textContent.split(' (')[0] : '';
             
             if (modalEmail) {
                 // Get profile picture from the modal if available
@@ -1138,17 +1144,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Open modal with existing error state
-                openPasswordLoginModal(modalEmail, username, modalDeviceName, profilePictureFilename);
+                openPasswordLoginModal(modalEmail, profileName, modalDeviceName, profilePictureFilename);
             }
         }
         
         // Check if we should restore password modal (returning from forgot password)
         const shouldRestorePasswordModal = SessionConstants && sessionStorage.getItem(SessionConstants.RESTORE_PASSWORD_MODAL) === 'true';
         const storedEmail = shouldRestorePasswordModal && SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_EMAIL) : null;
-        // Backward compatibility: try old username key if email not found
-        const storedUsername = shouldRestorePasswordModal && !storedEmail && SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_USERNAME) : null;
+        const storedProfileName = shouldRestorePasswordModal && SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_PROFILE_NAME) : null;
         
-        if (shouldRestorePasswordModal && (storedEmail || storedUsername)) {
+        if (shouldRestorePasswordModal && (storedEmail || storedProfileName)) {
             // Restore password modal state from sessionStorage
             const storedDeviceName = SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME) : null;
             const storedProfilePicture = SessionConstants ? sessionStorage.getItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE) : null;
@@ -1160,45 +1165,55 @@ document.addEventListener('DOMContentLoaded', () => {
             if (SessionConstants) {
                 sessionStorage.removeItem(SessionConstants.RESTORE_PASSWORD_MODAL);
             }
+
+            const resolveAndOpenPasswordModal = (users) => {
+                let email = storedEmail || '';
+                let profileName = storedProfileName || '';
+
+                if (users.length > 0) {
+                    if (email && !profileName) {
+                        const user = users.find(u => u.email === email);
+                        if (user) {
+                            profileName = user.profile_name || '';
+                        }
+                    } else if (!email && profileName) {
+                        const user = users.find(u => u.profile_name === profileName);
+                        if (user) {
+                            email = user.email || '';
+                        }
+                    }
+                }
+
+                openPasswordLoginModal(email, profileName, storedDeviceName, storedProfilePicture);
+            };
             
-            // Fetch registered users to get email if we only have username (backward compatibility)
+            // Fetch registered users to fill any missing email/profile name
             if (registeredUsersRoute && moduleCsrfToken) {
                 fetchRegisteredUsers?.(deviceUid, registeredUsersRoute, moduleCsrfToken)
                     .then((response) => {
                         registeredUsers = extractUsersFromResponse(response);
                         
-                        // If we only have username (old session storage), look up email
-                        let email = storedEmail || '';
-                        let username = storedUsername || '';
-                        if (!email && username && registeredUsers.length > 0) {
-                            const user = registeredUsers.find(u => u.username === username);
-                            if (user) {
-                                email = user.email || '';
-                            }
-                        }
-                        
                         // Hide loading spinner since we have users or know there are none
                         toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
                         
-                        // Open modal with stored state
-                        openPasswordLoginModal(email, username, storedDeviceName, storedProfilePicture);
+                        resolveAndOpenPasswordModal(registeredUsers);
                     })
                     .catch(() => {
                         // Hide loading spinner even on error
                         toggleVisibility?.('loadingView', false, 'd-block', 'd-none');
                         
-                        // Open modal anyway (email lookup will fail, but show modal)
-                        openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
+                        // Open modal anyway with whatever was stored
+                        resolveAndOpenPasswordModal([]);
                     });
             } else {
                 // No API route, open modal with what we have
-                openPasswordLoginModal(storedEmail || '', storedUsername || '', storedDeviceName, storedProfilePicture);
+                resolveAndOpenPasswordModal(registeredUsers || []);
             }
             
             // Clear stored state after opening modal
             if (SessionConstants) {
                 sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_EMAIL);
-                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_USERNAME);
+                sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_PROFILE_NAME);
                 sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_DEVICE_NAME);
                 sessionStorage.removeItem(SessionConstants.PASSWORD_FORM_PROFILE_PICTURE);
             }

@@ -26,7 +26,7 @@
                         <div>
                             <h5 class="mb-1">
                                 <a href="{{ route('admin.dashboard.user', $parent) }}" class="text-decoration-none">
-                                    {{ $parent->username }}
+                                    {{ $parent->profile_name }}
                                 </a>
                                 @if($parent->role === 'admin')
                                     <span class="badge bg-danger ms-2">{{ __('admin.admin') }}</span>
@@ -58,7 +58,7 @@
                                         size="small"
                                         mb="mb-0"
                                     />
-                                    <span class="ms-2">{{ $child->username }}</span>
+                                    <span class="ms-2">{{ $child->profile_name }}</span>
                                 </a>
                             @endforeach
                         </div>

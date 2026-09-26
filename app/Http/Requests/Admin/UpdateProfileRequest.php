@@ -40,7 +40,7 @@ class UpdateProfileRequest extends FormRequest
         
         $rules = [
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'username' => ['required', 'string', 'max:255'],
+            'profile_name' => ['required', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
             'cat_gif' => ['nullable', 'string', 'max:255'],
             'appears_in_profile_selection' => ['nullable', 'boolean'],
@@ -61,7 +61,7 @@ class UpdateProfileRequest extends FormRequest
             'email.required' => __('messages.email_required'),
             'email.email' => __('messages.email_invalid'),
             'email.unique' => __('messages.email_taken'),
-            'username.required' => __('messages.username_required'),
+            'profile_name.required' => __('messages.profile_name_required'),
             'password.min' => __('messages.password_min'),
             'pin.required' => __('messages.pin_required'),
             'pin.size' => __('messages.pin_size'),

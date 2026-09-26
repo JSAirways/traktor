@@ -1,16 +1,16 @@
 @props([
     'variant' => 'frontend', // 'admin' | 'frontend' | 'gallery'
-    'brandText' => null, // Optional text after icon (default: "Traktor" for frontend, "Admin Panel" for admin, username for gallery)
+    'brandText' => null, // Optional text after icon (default: "Traktor" for frontend, "Admin Panel" for admin, profile name for gallery)
     'showSidebarToggle' => false, // Admin only
     'containerClass' => 'container-fluid px-2 px-md-3', // Container classes
     'playerViewMode' => false, // Gallery: apply player-view-mode class for fade behavior
-    'username' => null, // Gallery: username for branding
+    'profileName' => null, // Gallery: profile name for branding
 ])
 
 @php
     $isAdmin = $variant === 'admin';
     $isGallery = $variant === 'gallery';
-    $defaultBrandText = $brandText ?? ($isAdmin ? 'Admin Panel' : ($isGallery && $username ? $username . "'s" : 'Traktor'));
+    $defaultBrandText = $brandText ?? ($isAdmin ? 'Admin Panel' : ($isGallery && $profileName ? $profileName . "'s" : 'Traktor'));
     $navbarClass = 'navbar navbar-dark bg-dark navbar-expand-md';
     if ($isGallery) {
         $navbarClass .= ' top-navbar' . ($playerViewMode ? ' player-view-mode' : '');

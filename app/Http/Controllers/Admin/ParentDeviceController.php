@@ -49,7 +49,7 @@ class ParentDeviceController extends Controller
         $device->load(['parent', 'childVisibility.child']);
         
         // Get all children of the parent
-        $allChildren = $user->children()->orderBy('username')->get();
+        $allChildren = $user->children()->orderBy('profile_name')->get();
         
         // Get current visibility settings
         $currentVisibility = $device->childVisibility->keyBy('child_user_id')->map->is_visible;

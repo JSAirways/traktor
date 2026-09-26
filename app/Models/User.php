@@ -17,7 +17,7 @@ class User extends Authenticatable implements HasLocalePreference
         'slug',
         'email',
         'password',
-        'username',
+        'profile_name',
         'role',
         'profile_picture',
         'profile_picture_category',
@@ -366,9 +366,9 @@ class User extends Authenticatable implements HasLocalePreference
         return 0;
     }
 
-    public static function generateSlugFromUsername(string $username): string
+    public static function generateSlugFromProfileName(string $profileName): string
     {
-        $slug = mb_strtolower($username, 'UTF-8');
+        $slug = mb_strtolower($profileName, 'UTF-8');
         $slug = preg_replace('/[^\p{L}\p{N}\s-]/u', '', $slug);
         $slug = preg_replace('/[\s]+/u', '-', $slug);
         $slug = preg_replace('/-+/', '-', $slug);
@@ -381,9 +381,9 @@ class User extends Authenticatable implements HasLocalePreference
         return preg_replace('/[^a-z0-9_-]/', '', $slug);
     }
 
-    public static function generateUniqueSlugFromUsername(string $username, ?int $excludeUserId = null): string
+    public static function generateUniqueSlugFromProfileName(string $profileName, ?int $excludeUserId = null): string
     {
-        $baseSlug = self::generateSlugFromUsername($username);
+        $baseSlug = self::generateSlugFromProfileName($profileName);
         $slug = $baseSlug;
         $counter = 1;
 
@@ -397,6 +397,34 @@ class User extends Authenticatable implements HasLocalePreference
         return $slug;
     }
 
+    /**
+     * Generate a unique profile_name for one-off migrations / child creation.
+     * Ensures uniqueness for child.local emails and optionally per parent.
+     */
+    public static function generateUniqueProfileNameFromName(string $name, ?int $parentId = null): string
+    {
+        $base = trim($name);
+        if ($base === '') {
+            $base = 'child';
+        }
+
+        $profileName = $base;
+        $counter = 1;
+
+        while (
+            self::where('email', strtolower($profileName) . '@child.local')->exists()
+            || (
+                $parentId !== null
+                && self::where('parent_id', $parentId)->where('profile_name', $profileName)->exists()
+            )
+        ) {
+            $profileName = $base . $counter;
+            $counter++;
+        }
+
+        return $profileName;
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -407,8 +435,8 @@ class User extends Authenticatable implements HasLocalePreference
                 $user->email = strtolower($user->email);
             }
 
-            if ($user->isDirty('username') || empty($user->slug)) {
-                $user->slug = self::generateUniqueSlugFromUsername($user->username ?? '', $user->id);
+            if ($user->isDirty('profile_name') || empty($user->slug)) {
+                $user->slug = self::generateUniqueSlugFromProfileName($user->profile_name ?? '', $user->id);
             }
         });
     }

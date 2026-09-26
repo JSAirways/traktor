@@ -23,7 +23,7 @@
             variant="profile"
             containerId="passwordLoginModalProfilePicture"
         />
-        <h5 class="text-center text-light mb-4 mt-2" id="passwordLoginModalUsernameDisplay"></h5>
+        <h5 class="text-center text-light mb-4 mt-2" id="passwordLoginModalProfileNameDisplay"></h5>
     </div>
 
     <form method="POST" action="{{ route('device.register') }}" id="passwordLoginModalForm">

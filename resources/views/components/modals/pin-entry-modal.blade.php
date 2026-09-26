@@ -27,7 +27,7 @@
                 </div>
                 <form id="pinEntryForm">
                     @csrf
-                    <input type="hidden" name="username" id="pinEntryUsername" value="">
+                    <input type="hidden" name="profile_name" id="pinEntryProfileName" value="">
 
                     <x-forms.pin-input
                         inputId="pinEntryPin"

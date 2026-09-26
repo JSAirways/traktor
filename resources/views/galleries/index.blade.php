@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', $user->username . "'s Traktor")
+@section('title', $user->profile_name . "'s Traktor")
 @section('body-class', 'bg-dark text-light view-gallery')
 
 @section('content')
-<x-layout.navbar-gallery :username="$user->username" :user="$user" />
+<x-layout.navbar-gallery :profileName="$user->profile_name" :user="$user" />
 
 <!-- Loading Spinner -->
 <div id="loadingSpinner" class="loading-spinner-overlay">
@@ -27,7 +27,7 @@
 <script 
     data-slug="{{ $user->slug }}" 
     data-channels='{{ json_encode($channels ?? []) }}' 
-    data-username="{{ $user->username }}" 
+    data-profile-name="{{ $user->profile_name }}" 
     data-cache-version="{{ $cacheVersion }}"
 ></script>
 

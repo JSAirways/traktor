@@ -12,14 +12,14 @@
     <div class="card-header bg-info">
         <h5 class="mb-0 text-white">
             <i class="bi bi-key me-2"></i>
-            {{ __('admin.viewing_pin_for', ['username' => $user->username]) }}
+            {{ __('admin.viewing_pin_for', ['profile_name' => $user->profile_name]) }}
         </h5>
     </div>
     <div class="card-body text-center">
         <p class="text-muted mb-4">{{ __('admin.pin_required_info') }}</p>
         
         <div class="mb-4">
-            <label class="form-label text-muted">{{ __('admin.pin_for', ['username' => $user->username]) }}</label>
+            <label class="form-label text-muted">{{ __('admin.pin_for', ['profile_name' => $user->profile_name]) }}</label>
             <div class="display-1 fw-bold text-success mb-2" style="letter-spacing: 0.5rem;">
                 {{ $generatedPin }}
             </div>
@@ -31,7 +31,7 @@
             :autohide="false"
             icon="bi bi-info-circle"
         >
-            {{ __('admin.pin_required_at_url') }} <code class="bg-dark px-2 py-1 rounded">{{ route('pin-entry', ['username' => $user->username]) }}</code>
+            {{ __('admin.pin_required_at_url') }} <code class="bg-dark px-2 py-1 rounded">{{ route('pin-entry', ['profile_name' => $user->profile_name]) }}</code>
         </x-ui.toast-notification>
         
         <div class="d-flex flex-column flex-md-row justify-content-center gap-2">

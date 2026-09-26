@@ -86,11 +86,11 @@ class DeviceRegistrationTest extends TestCase
 
     private function makeApprovedParent(string $email, string $password): User
     {
-        $username = 'parent-'.Str::lower(Str::random(6));
+        $profileName = 'parent-'.Str::lower(Str::random(6));
 
         return User::forceCreate([
-            'username' => $username,
-            'slug' => $username,
+            'profile_name' => $profileName,
+            'slug' => $profileName,
             'email' => $email,
             'password' => Hash::make($password),
             'role' => 'user',

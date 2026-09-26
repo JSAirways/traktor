@@ -27,16 +27,16 @@
 
         <!-- Username -->
         <div class="form-floating mb-3">
-            <input id="username" class="form-control @error('username') is-invalid @enderror" type="text" name="username" value="{{ old('username') }}" placeholder=" " required autocomplete="username" />
-            <label for="username">{{ __('common.username') }} *</label>
-            @error('username')
+            <input id="profile_name" class="form-control @error('profile_name') is-invalid @enderror" type="text" name="profile_name" value="{{ old('profile_name') }}" placeholder=" " required autocomplete="nickname" />
+            <label for="profile_name">{{ __('common.profile_name') }} *</label>
+            @error('profile_name')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror
         </div>
 
         <!-- Email Address -->
         <div class="form-floating mb-3">
-            <input id="email" class="form-control @error('email') is-invalid @enderror" type="email" name="email" value="{{ old('email') }}" placeholder=" " required autocomplete="username" />
+            <input id="email" class="form-control @error('email') is-invalid @enderror" type="email" name="email" value="{{ old('email') }}" placeholder=" " required autocomplete="nickname" />
             <label for="email">{{ __('common.email') }} *</label>
             @error('email')
                 <div class="invalid-feedback">{{ $message }}</div>

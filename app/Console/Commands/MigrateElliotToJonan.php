@@ -9,7 +9,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Cache;
 
 class MigrateElliotToJonan extends Command
 {
@@ -41,8 +40,8 @@ class MigrateElliotToJonan extends Command
         }
 
         // Find the users
-        $elliot = User::where('username', 'Elliot')->first();
-        $jonan = User::where('username', 'Jonan')->first();
+        $elliot = User::where('profile_name', 'Elliot')->first();
+        $jonan = User::where('profile_name', 'Jonan')->first();
 
         if (!$elliot) {
             $this->error('❌ User "Elliot" not found');
@@ -93,7 +92,7 @@ class MigrateElliotToJonan extends Command
             $elliotChild = $this->createChildProfile($jonan, 'Elliot', null, $dryRun);
             
             if ($elliotChild) {
-                $this->info("   ✓ Created child profile: Elliot (ID: {$elliotChild->id}, Username: {$elliotChild->username})");
+                $this->info("   ✓ Created child profile: Elliot (ID: {$elliotChild->id}, Username: {$elliotChild->profile_name})");
                 
                 // Step 2: Move Elliot's videos to child Elliot
                 if ($elliotVideos > 0) {
@@ -112,10 +111,11 @@ class MigrateElliotToJonan extends Command
                 // Step 4: Invalidate cache for the new child profile
                 if (!$dryRun) {
                     $this->info('📝 Step 4: Invalidating cache...');
-                    Cache::forget("user_gallery_{$elliotChild->username}");
-                    $this->info("   ✓ Cache invalidated for user_gallery_{$elliotChild->username}");
+                    // Bump cache_version so versioned gallery/API keys miss (see InvalidatesUserCache)
+                    $elliotChild->update(['cache_version' => now()]);
+                    $this->info("   ✓ Cache version bumped for {$elliotChild->profile_name} (slug: {$elliotChild->slug})");
                 } else {
-                    $this->line("   [DRY RUN] Would invalidate cache for user_gallery_{$elliotChild->username}");
+                    $this->line("   [DRY RUN] Would bump cache_version for {$elliotChild->profile_name}");
                 }
             }
 
@@ -148,8 +148,8 @@ class MigrateElliotToJonan extends Command
      */
     protected function createChildProfile(User $parent, string $name, ?string $pin, bool $dryRun = false): ?User
     {
-        // Check if child already exists
-        $existingChild = $parent->children()->where('name', $name)->first();
+        // Check if child already exists (identity is profile_name; name is not fillable)
+        $existingChild = $parent->children()->where('profile_name', $name)->first();
         if ($existingChild) {
             $this->warn("   ⚠ Child '{$name}' already exists (ID: {$existingChild->id})");
             $this->warn("   ⚠ Will use existing child profile for migration");
@@ -157,19 +157,18 @@ class MigrateElliotToJonan extends Command
         }
 
         if ($dryRun) {
-            $username = User::generateUniqueUsernameFromName($name);
-            $this->line("   [DRY RUN] Would create child: {$name} (username: {$username})");
+            $profileName = User::generateUniqueProfileNameFromName($name, $parent->id);
+            $this->line("   [DRY RUN] Would create child: {$name} (profile_name: {$profileName})");
             return null;
         }
 
-        // Generate unique username
-        $username = User::generateUniqueUsernameFromName($name);
-        $dummyEmail = $username . '@child.local';
+        // Generate unique profile_name
+        $profileName = User::generateUniqueProfileNameFromName($name, $parent->id);
+        $dummyEmail = $profileName . '@child.local';
         $dummyPassword = Hash::make(Str::random(32));
 
         $child = User::create([
-            'name' => $name,
-            'username' => $username,
+            'profile_name' => $profileName,
             'email' => $dummyEmail,
             'password' => $dummyPassword,
             'role' => 'user',

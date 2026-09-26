@@ -10,6 +10,25 @@
 
 <form method="POST" action="{{ route('admin.users.store') }}">
     @csrf
+
+    <div class="d-flex align-items-start gap-3 mb-3">
+        <x-forms.profile-picture-selector
+            name="cat_gif"
+            :currentValue="old('cat_gif', '')"
+            :pictures="$catGifs"
+            category="cats"
+            :compact="true"
+        />
+        <div class="flex-grow-1">
+            <div class="form-floating">
+                <input type="text" class="form-control @error('profile_name') is-invalid @enderror" id="profile_name" name="profile_name" value="{{ old('profile_name') }}" placeholder=" " required>
+                <label for="profile_name">{{ __('admin.profile_name_label') }} *</label>
+                @error('profile_name')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+        </div>
+    </div>
     
     {{-- Email field (required for parents, hidden for children) --}}
     <div class="form-floating mb-3" id="emailField">
@@ -31,14 +50,6 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
         <div class="form-text">{{ __('admin.child_name_help') }}</div>
-    </div>
-    
-    <div class="form-floating mb-3">
-        <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username') }}" placeholder=" " required>
-        <label for="username">{{ __('admin.username_label') }} *</label>
-        @error('username')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
     </div>
     
     <div class="form-floating mb-3">
@@ -68,7 +79,7 @@
                 @php
                     $potentialParents = \App\Models\User::whereNull('parent_id')
                         ->where('role', 'user')
-                        ->orderBy('username')
+                        ->orderBy('profile_name')
                         ->get();
                 @endphp
                 @foreach($potentialParents as $parent)
@@ -98,13 +109,6 @@
         @enderror
         <div class="form-text">{{ __('admin.account_status_label') }}</div>
     </div>
-    
-    <x-forms.profile-picture-selector 
-        name="cat_gif"
-        :currentValue="old('cat_gif', '')"
-        :pictures="$catGifs"
-        category="cats"
-    />
     
     <script>
         function toggleParentSelector() {

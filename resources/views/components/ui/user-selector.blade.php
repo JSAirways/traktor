@@ -16,7 +16,7 @@
         if ($user instanceof \App\Models\User) {
             return [
                 'value' => (string) $user->{$valueKey},
-                'username' => $user->username,
+                'profile_name' => $user->profile_name,
                 'avatar_url' => $user->profilePictureUrl(),
                 'is_you' => $user->id === $authId,
             ];
@@ -26,31 +26,31 @@
 
         return [
             'value' => $value !== null ? (string) $value : '',
-            'username' => $user['username'] ?? '',
+            'profile_name' => $user['profile_name'] ?? '',
             'avatar_url' => $user['avatar_url'] ?? null,
             'is_you' => (bool) ($user['is_you'] ?? (($user['id'] ?? null) === $authId)),
         ];
     };
 
-    $options = collect($users)->map($normalize)->filter(fn ($u) => $u['value'] !== '' && $u['username'] !== '')->values();
+    $options = collect($users)->map($normalize)->filter(fn ($u) => $u['value'] !== '' && $u['profile_name'] !== '')->values();
 
     $selectedValue = null;
-    $selectedUsername = null;
+    $selectedProfileName = null;
     $selectedAvatar = null;
 
     if ($selected instanceof \App\Models\User) {
         $selectedValue = (string) $selected->{$valueKey};
-        $selectedUsername = $selected->username;
+        $selectedProfileName = $selected->profile_name;
         $selectedAvatar = $selected->profilePictureUrl();
     } elseif (is_array($selected)) {
         $normalizedSelected = $normalize($selected);
         $selectedValue = $normalizedSelected['value'] ?: null;
-        $selectedUsername = $normalizedSelected['username'] ?: null;
+        $selectedProfileName = $normalizedSelected['profile_name'] ?: null;
         $selectedAvatar = $normalizedSelected['avatar_url'];
     }
 
     $showingAll = $allLabel && ($selectedValue === null || $selectedValue === '');
-    $displayName = $showingAll ? $allLabel : ($selectedUsername ?: __('welcome.select_user'));
+    $displayName = $showingAll ? $allLabel : ($selectedProfileName ?: __('welcome.select_user'));
     $displayAvatar = $showingAll ? null : $selectedAvatar;
     $canSwitch = $options->count() > 1 || ($allLabel && $options->count() > 0);
     $labelPrefix = $ariaLabel ?: __('admin.viewing_analytics_for');
@@ -110,10 +110,10 @@
                             @if($option['avatar_url'])
                                 <img src="{{ $option['avatar_url'] }}" alt="" class="admin-user-avatar-img">
                             @else
-                                <span class="admin-user-avatar-fallback">{{ strtoupper(substr($option['username'], 0, 1)) }}</span>
+                                <span class="admin-user-avatar-fallback">{{ strtoupper(substr($option['profile_name'], 0, 1)) }}</span>
                             @endif
                         </span>
-                        <span class="admin-user-name">{{ $option['username'] }}</span>
+                        <span class="admin-user-name">{{ $option['profile_name'] }}</span>
                         @if($option['is_you'])
                             <span class="badge text-bg-light border ms-auto">{{ __('common.you') }}</span>
                         @endif

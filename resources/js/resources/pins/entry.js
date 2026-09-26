@@ -20,16 +20,16 @@ const loadingManager = LoadingStateManager ? new LoadingStateManager({
 }) : null;
 
 let pinInput = null;
-let usernameInput = null;
+let profileNameInput = null;
 let currentRedirectUrl = null;
 
 async function validatePin(pin) {
-    if (!pinInput || !usernameInput) {
+    if (!pinInput || !profileNameInput) {
         return;
     }
 
-    const username = usernameInput.value;
-    if (!username || pin.length !== 4) {
+    const profileName = profileNameInput.value;
+    if (!profileName || pin.length !== 4) {
         return;
     }
 
@@ -38,7 +38,7 @@ async function validatePin(pin) {
     loadingManager?.hideError();
 
     try {
-        const requestBody = { username, pin };
+        const requestBody = { profile_name: profileName, pin };
         const redirectUrl = currentRedirectUrl || window.pinEntryRedirectUrl;
         if (redirectUrl) {
             requestBody.intended_url = redirectUrl;
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pinEntryModal) return;
 
     pinInput = document.getElementById('pinEntryPin');
-    usernameInput = document.getElementById('pinEntryUsername');
+    profileNameInput = document.getElementById('pinEntryProfileName');
 
     setupModalAccessibility?.('pinEntryModal');
     if (TimingConstants) {
@@ -107,21 +107,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pinEntryModal.addEventListener('show.bs.modal', (event) => {
         const triggerButton = event.relatedTarget;
-        let username = null;
+        let profileName = null;
         let redirectUrl = null;
 
         if (triggerButton) {
-            username = triggerButton.getAttribute('data-child-username');
+            profileName = triggerButton.getAttribute('data-child-profile-name');
             const slug = triggerButton.getAttribute('data-child-slug');
             redirectUrl = window.pinEntryRedirectUrl || (slug ? `/${slug}/gallery` : null);
         } else {
-            const scriptTag = document.querySelector('script[data-pin-username]');
-            username = scriptTag?.getAttribute('data-pin-username') || null;
+            const scriptTag = document.querySelector('script[data-pin-profile-name]');
+            profileName = scriptTag?.getAttribute('data-pin-profile-name') || null;
             redirectUrl = window.pinEntryRedirectUrl;
         }
 
-        if (usernameInput) {
-            usernameInput.value = username || '';
+        if (profileNameInput) {
+            profileNameInput.value = profileName || '';
         }
         currentRedirectUrl = redirectUrl || null;
         pinInput?.classList.remove('is-invalid');
@@ -147,13 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function openPinEntryModal(username, redirectUrl = null) {
+function openPinEntryModal(profileName, redirectUrl = null) {
     const modal = document.getElementById('pinEntryModal');
     if (!modal) return;
 
-    const usernameInputEl = document.getElementById('pinEntryUsername');
-    if (usernameInputEl) {
-        usernameInputEl.value = username;
+    const profileNameInputEl = document.getElementById('pinEntryProfileName');
+    if (profileNameInputEl) {
+        profileNameInputEl.value = profileName;
     }
 
     if (redirectUrl) {

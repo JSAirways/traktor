@@ -27,12 +27,12 @@ class StoreChildRequest extends FormRequest
         $parentId = auth()->id();
         
         $rules = [
-            'username' => [
+            'profile_name' => [
                 'required', 
                 'string', 
                 'max:255',
-                // Ensure username is unique per parent (composite unique constraint)
-                Rule::unique('users', 'username')->where(function ($query) use ($parentId) {
+                // Ensure profile_name is unique per parent (composite unique constraint)
+                Rule::unique('users', 'profile_name')->where(function ($query) use ($parentId) {
                     return $query->where('parent_id', $parentId);
                 }),
             ],
@@ -49,8 +49,8 @@ class StoreChildRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'username.required' => __('messages.username_required'),
-            'username.max' => __('messages.username_max'),
+            'profile_name.required' => __('messages.profile_name_required'),
+            'profile_name.max' => __('messages.profile_name_max'),
             'pin.required' => __('messages.pin_required'),
             'pin.size' => __('messages.pin_size'),
             'pin.regex' => __('messages.pin_format'),

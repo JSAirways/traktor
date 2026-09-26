@@ -27,11 +27,11 @@
                     
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" 
-                               id="username" name="username" 
-                               value="{{ $username ?? old('username') }}" 
+                               id="profile_name" name="profile_name" 
+                               value="{{ $profileName ?? old('profile_name') }}" 
                                placeholder=" "
                                readonly>
-                        <label for="username">{{ __('common.username') }}</label>
+                        <label for="profile_name">{{ __('common.profile_name') }}</label>
                     </div>
 
                     <div class="form-floating mb-3">
@@ -48,7 +48,7 @@
                         @error('pin')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        @error('username')
+                        @error('profile_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

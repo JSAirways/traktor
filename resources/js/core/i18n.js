@@ -21,7 +21,7 @@ export function initI18n(trans, locale) {
 /**
  * Get translation for a key
  * Supports nested keys with dot notation (e.g., 'common.back')
- * Supports parameter replacement (e.g., { username: 'John' })
+ * Supports parameter replacement (e.g., { profile_name: 'John' })
  * 
  * @param {string} key - Translation key (supports dot notation)
  * @param {Object} params - Parameters to replace in translation
@@ -29,7 +29,7 @@ export function initI18n(trans, locale) {
  * 
  * @example
  * t('common.back') // Returns "Back"
- * t('auth.log_in_as', { username: 'John' }) // Returns "Log in as John"
+ * t('auth.log_in_as', { profile_name: 'John' }) // Returns "Log in as John"
  */
 export function t(key, params = {}) {
     // Get translation value

@@ -30,7 +30,7 @@ return [
     'user_registration_notification' => 'New User Registration',
     'user_registration_intro' => 'A new user has registered and is pending approval.',
     'user_registration_name' => 'Name',
-    'user_registration_username' => 'Username',
+    'user_registration_profile_name' => 'Profile name',
     'user_registration_email' => 'Email',
     'user_registration_how_heard' => 'How did you hear about this app?',
     'user_registration_approve_button' => 'Approve',

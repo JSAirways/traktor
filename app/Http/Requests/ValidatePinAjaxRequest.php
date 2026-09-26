@@ -20,7 +20,7 @@ class ValidatePinAjaxRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string'],
+            'profile_name' => ['required', 'string'],
             'pin' => ['required', 'string', 'size:4', 'regex:/^[0-9]{4}$/'],
             'intended_url' => ['nullable', 'string', 'regex:/^(\/|https?:\/\/)/'], // Allow relative paths (starting with /) or full URLs
         ];
@@ -32,7 +32,7 @@ class ValidatePinAjaxRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'username.required' => __('messages.username_required'),
+            'profile_name.required' => __('messages.profile_name_required'),
             'pin.required' => __('messages.pin_required'),
             'pin.size' => __('messages.pin_size'),
             'pin.regex' => __('messages.pin_format'),

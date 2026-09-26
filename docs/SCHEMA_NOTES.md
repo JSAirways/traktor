@@ -9,7 +9,7 @@ High-level data model for developers. Prefer migrations under `database/migratio
 - Parents: `parent_id` null, `role` `user` or `admin`, email/password, `account_status`, optional `how_heard_about`
 - Children: `parent_id` set, typically no real email login; optional encrypted `view_pin` (presence implies PIN required — no separate `pin_enabled` column)
 - Parent convenience auth: optional encrypted `admin_pin` for backend access from the registered-device Settings modal
-- Profile: `username`, `slug`, `profile_picture`, `locale`, `is_viewable`, `appears_in_profile_selection`
+- Profile: `profile_name`, `slug`, `profile_picture`, `locale`, `is_viewable`, `appears_in_profile_selection`
 - Gallery UI: `channel_order` (JSON), `show_all_content_section` (bool), `hidden_channels` (JSON)
 - Cache: `cache_version` (timestamp) — bumping invalidates versioned user/content caches
 - Optional JSON `parental_controls` (not enforced in viewing paths yet)

@@ -55,7 +55,7 @@
                                     />
                                 @endif
                                 <div class="d-flex flex-column">
-                                    <span class="fw-bold">{{ $parent->username }}</span>
+                                    <span class="fw-bold">{{ $parent->profile_name }}</span>
                                     <span class="text-muted small d-md-none">{{ $parent->email }}</span>
                                 </div>
                             </div>

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-<x-admin.page-header :title="__('admin.dashboard') . ' - ' . $user->username">
+<x-admin.page-header :title="__('admin.dashboard') . ' - ' . $user->profile_name">
     <x-slot name="subtitle">
         <div class="d-flex align-items-center gap-2">
             <x-ui.user-avatar
@@ -56,7 +56,7 @@
                                         mb="mb-0"
                                     />
                                     <div>
-                                        <h6 class="mb-0">{{ $child->username }}</h6>
+                                        <h6 class="mb-0">{{ $child->profile_name }}</h6>
                                         <small class="text-muted">{{ __('admin.child') }}</small>
                                     </div>
                                 </div>

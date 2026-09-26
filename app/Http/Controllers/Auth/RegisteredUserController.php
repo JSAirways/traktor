@@ -49,7 +49,7 @@ class RegisteredUserController extends Controller
         // Create user with 'pending' status (requires admin approval).
         // Role is hardcoded — never accept role from the request.
         $user = User::create([
-            'username' => $validated['username'],
+            'profile_name' => $validated['profile_name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'how_heard_about' => $validated['how_heard_about'],

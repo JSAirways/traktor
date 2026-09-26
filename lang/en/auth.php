@@ -6,10 +6,10 @@ return [
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     
     'logging_in' => 'Logging in...',
-    'log_in_as' => 'Log in as :username',
+    'log_in_as' => 'Log in as :profile_name',
     'invalid_pin' => 'Invalid PIN. Please try again.',
     'too_many_pin_attempts' => 'Too many PIN attempts. Please try again in :minutes minutes.',
-    'invalid_credentials' => 'Invalid username or password. Please try again.',
+    'invalid_credentials' => 'Invalid email or password. Please try again.',
     
     'forgot_password' => 'Forgot Password?',
     'forgot_password_link' => 'Forgot password',

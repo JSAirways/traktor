@@ -45,7 +45,7 @@
 <table class="table table-striped">
     <thead>
         <tr>
-            <th style="width: 25%;">{{ __('common.username') }}</th>
+            <th style="width: 25%;">{{ __('common.profile_name') }}</th>
             <th style="width: 18%;">{{ __('common.email') }}</th>
             <th style="width: 10%;">{{ __('admin.children') }}</th>
             <th style="width: 12%;">{{ __('admin.status') }}</th>
@@ -70,12 +70,12 @@
                                 </div>
                             @elseif($user->profile_picture_path)
                                 <img src="{{ $user->profile_picture_path }}" 
-                                     alt="{{ $user->username }}" 
+                                     alt="{{ $user->profile_name }}" 
                                      class="rounded-circle" 
                                      style="width: 40px; height: 40px; object-fit: cover;">
                             @endif
                             <div>
-                                <span class="fw-bold">{{ $user->username }}</span>
+                                <span class="fw-bold">{{ $user->profile_name }}</span>
                             </div>
                         </div>
                     </div>
@@ -160,12 +160,12 @@
                                                 </div>
                                             @elseif($childProfilePicturePath)
                                                 <img src="{{ $childProfilePicturePath }}" 
-                                                     alt="{{ $child->username }}" 
+                                                     alt="{{ $child->profile_name }}" 
                                                      class="rounded-circle flex-shrink-0" 
                                                      style="width: 40px; height: 40px; object-fit: cover;">
                                             @endif
                                             <div class="d-flex flex-column flex-grow-1">
-                                                <span class="fw-bold">{{ $child->username }}</span>
+                                                <span class="fw-bold">{{ $child->profile_name }}</span>
                                                 <div class="d-flex flex-wrap gap-2 mt-1 align-items-center">
                                                     @php
                                                         $totalDevices = $user->deviceRegistrations()->count();
@@ -256,12 +256,12 @@
                                                             </div>
                                                         @elseif($childProfilePicturePath)
                                                             <img src="{{ $childProfilePicturePath }}" 
-                                                                 alt="{{ $child->username }}" 
+                                                                 alt="{{ $child->profile_name }}" 
                                                                  class="rounded-circle" 
                                                                  style="width: 40px; height: 40px; object-fit: cover;">
                                                         @endif
                                                         <div>
-                                                            <span class="fw-bold">{{ $child->username }}</span>
+                                                            <span class="fw-bold">{{ $child->profile_name }}</span>
                                                         </div>
                                                     </div>
                                                 </td>

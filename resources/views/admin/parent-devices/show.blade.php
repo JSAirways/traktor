@@ -127,11 +127,11 @@
                                     <div class="d-flex align-items-center gap-2">
                                         @if($child->profile_picture)
                                             <img src="{{ asset('assets/profile-pictures/cats/' . $child->profile_picture) }}" 
-                                                 alt="{{ $child->username }}" 
+                                                 alt="{{ $child->profile_name }}" 
                                                  class="rounded-circle" 
                                                  style="width: 24px; height: 24px; object-fit: cover;">
                                         @endif
-                                        <span>{{ $child->username }}</span>
+                                        <span>{{ $child->profile_name }}</span>
                                     </div>
                                 </label>
                             </div>

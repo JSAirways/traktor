@@ -1,6 +1,6 @@
-@props(['username', 'user' => null])
+@props(['profileName', 'user' => null])
 
-<x-layout.navbar variant="gallery" :username="$username">
+<x-layout.navbar variant="gallery" :profileName="$profileName">
     <x-slot name="center">
         <!-- Playlist navigation (previous/next when watching playlist video) -->
         <div id="playlistNavButtons" class="d-none d-flex justify-content-center gap-3 gap-md-4 align-items-center">

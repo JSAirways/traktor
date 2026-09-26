@@ -5,8 +5,8 @@
 ])
 
 @php
-    // Get user's name or username for greeting
-    $userName = $user ? ($user->username ?? 'User') : null;
+    // Get user's profile name for greeting
+    $userName = $user ? ($user->profile_name ?? 'User') : null;
     $greetingText = $greeting ?? ($userName ? "Hello {$userName}!" : 'Hello!');
     // Use full URL for email clients
     $logoUrl = url(asset('tractor.png'));

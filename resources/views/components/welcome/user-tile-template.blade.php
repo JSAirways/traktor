@@ -8,7 +8,7 @@
              data-bs-toggle="modal"
              data-bs-target="#passwordLoginModal"
              data-user-email=""
-             data-user-username=""
+             data-user-profile-name=""
              data-user-device-name=""
              data-user-profile-picture="">
             <div class="user-avatar-circle bg-dark border border-success text-light d-flex align-items-center justify-content-center overflow-hidden">

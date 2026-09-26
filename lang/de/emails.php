@@ -30,7 +30,7 @@ return [
     'user_registration_notification' => 'Neue Benutzerregistrierung',
     'user_registration_intro' => 'Ein neuer Benutzer hat sich registriert und wartet auf Genehmigung.',
     'user_registration_name' => 'Name',
-    'user_registration_username' => 'Benutzername',
+    'user_registration_profile_name' => 'Profilname',
     'user_registration_email' => 'E-Mail',
     'user_registration_how_heard' => 'Wie hast du von dieser App erfahren?',
     'user_registration_approve_button' => 'Genehmigen',

@@ -46,7 +46,7 @@
                     <th style="width: 40px;">
                         <input type="checkbox" id="selectAll" class="form-check-input" onchange="toggleSelectAll(this)">
                     </th>
-                    <th>{{ __('common.username') }}</th>
+                    <th>{{ __('common.profile_name') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('common.email') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('admin.how_heard_about') }}</th>
                     <th class="d-none d-md-table-cell">{{ __('admin.registered') }}</th>
@@ -62,7 +62,7 @@
                         </td>
                         <td class="align-middle">
                             <div class="d-flex flex-column">
-                                <span class="fw-bold">{{ $user->username }}</span>
+                                <span class="fw-bold">{{ $user->profile_name }}</span>
                                 <span class="text-muted small d-md-none">{{ $user->email }}</span>
                             </div>
                         </td>
@@ -111,7 +111,7 @@
                                 <form method="POST" action="{{ route('admin.users.reject', $user) }}">
                                     @csrf
                                     <div class="modal-header">
-                                        <h5 class="modal-title">{{ __('admin.reject_user') }}: {{ $user->username }}</h5>
+                                        <h5 class="modal-title">{{ __('admin.reject_user') }}: {{ $user->profile_name }}</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">

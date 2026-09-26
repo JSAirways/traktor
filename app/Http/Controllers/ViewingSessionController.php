@@ -29,7 +29,7 @@ class ViewingSessionController extends Controller
         }
 
         return view('pins.entry', [
-            'username' => $user->username,
+            'profileName' => $user->profile_name,
             'slug' => $user->slug,
             'requiresPin' => $user->hasPin()
         ]);
@@ -40,7 +40,7 @@ class ViewingSessionController extends Controller
      */
     public function validatePin(ValidatePinRequest $request)
     {
-        $user = $this->userLookupService->findViewableUserByUsername($request, $request->username);
+        $user = $this->userLookupService->findViewableUserByProfileName($request, $request->profile_name);
 
         // Use generic error message to prevent user enumeration
         // Don't reveal whether user exists or if PIN is wrong
@@ -48,7 +48,7 @@ class ViewingSessionController extends Controller
             $request->session()->put('pin_error', true);
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['username' => __('messages.authentication_failed')]);
+                ->withErrors(['profile_name' => __('messages.authentication_failed')]);
         }
 
         // If user has a PIN set, validate it
@@ -85,7 +85,7 @@ class ViewingSessionController extends Controller
      */
     public function validatePinAjax(ValidatePinAjaxRequest $request)
     {
-        $user = $this->userLookupService->findViewableUserByUsername($request, $request->username);
+        $user = $this->userLookupService->findViewableUserByProfileName($request, $request->profile_name);
 
         // Use generic error message to prevent user enumeration
         // Don't reveal whether user exists or if PIN is wrong

@@ -83,7 +83,7 @@ class DashboardController extends Controller
             ->with(['children' => function ($query) {
                 $query->where('is_viewable', true);
             }])
-            ->orderBy('username')
+            ->orderBy('profile_name')
             ->get();
 
         return view('admin.dashboard.users', [
@@ -255,12 +255,12 @@ class DashboardController extends Controller
     {
         if ($authUser->isAdmin()) {
             return User::where('is_viewable', true)
-                ->orderBy('username')
+                ->orderBy('profile_name')
                 ->get();
         }
 
         return collect([$authUser])
-            ->merge($authUser->children()->where('is_viewable', true)->orderBy('username')->get())
+            ->merge($authUser->children()->where('is_viewable', true)->orderBy('profile_name')->get())
             ->values();
     }
 }

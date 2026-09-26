@@ -22,9 +22,9 @@ class RegisterUserRequest extends FormRequest
             ]);
         }
 
-        if ($this->has('username')) {
+        if ($this->has('profile_name')) {
             $this->merge([
-                'username' => trim(strip_tags((string) $this->input('username'))),
+                'profile_name' => trim(strip_tags((string) $this->input('profile_name'))),
             ]);
         }
 
@@ -45,7 +45,7 @@ class RegisterUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string', 'min:2', 'max:255'],
+            'profile_name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['required', 'string', 'email:filter', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'how_heard_about' => ['required', 'string', 'min:2', 'max:500'],
@@ -82,7 +82,7 @@ class RegisterUserRequest extends FormRequest
             'email.required' => __('messages.email_required'),
             'email.email' => __('messages.email_invalid'),
             'email.unique' => __('messages.email_taken'),
-            'username.required' => __('messages.username_required'),
+            'profile_name.required' => __('messages.profile_name_required'),
             'password.required' => __('messages.password_required'),
             'password.confirmed' => __('messages.password_confirmation_mismatch'),
             'how_heard_about.required' => __('messages.how_heard_about_required'),
@@ -92,7 +92,7 @@ class RegisterUserRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'username' => __('common.username'),
+            'profile_name' => __('common.profile_name'),
             'email' => __('common.email'),
             'password' => __('common.password'),
             'password_confirmation' => __('common.confirm_password'),

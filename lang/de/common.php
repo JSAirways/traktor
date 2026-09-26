@@ -31,7 +31,7 @@ return [
     // Labels
     'email' => 'E-Mail',
     'password' => 'Passwort',
-    'username' => 'Benutzername',
+    'profile_name' => 'Profilname',
     'name' => 'Name',
     'language' => 'Sprache',
     'change_language' => 'Sprache ändern',

@@ -34,10 +34,10 @@ export const SessionConstants = {
     PASSWORD_FORM_EMAIL: 'passwordFormEmail',
     
     /**
-     * Session storage key for password form username (for display, backward compatibility)
-     * @deprecated Use PASSWORD_FORM_EMAIL instead
+     * Session storage key for password form profile name (for display)
+     * @deprecated Prefer PASSWORD_FORM_EMAIL for auth identity
      */
-    PASSWORD_FORM_USERNAME: 'passwordFormUsername',
+    PASSWORD_FORM_PROFILE_NAME: 'passwordFormProfileName',
     
     /**
      * Session storage key for password form device name

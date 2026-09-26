@@ -40,8 +40,8 @@ class MigrateUserData extends Command
         }
 
         // Find the users
-        $veraParent = User::where('username', 'Vera')->whereNull('parent_id')->first();
-        $andreaParent = User::where('username', 'Andrea')->whereNull('parent_id')->first();
+        $veraParent = User::where('profile_name', 'Vera')->whereNull('parent_id')->first();
+        $andreaParent = User::where('profile_name', 'Andrea')->whereNull('parent_id')->first();
 
         if (!$veraParent) {
             $this->error('❌ User "Vera" (parent account) not found');
@@ -85,7 +85,7 @@ class MigrateUserData extends Command
             $veraChild = $this->createChildProfile($andreaParent, 'Vera', null, $dryRun);
             
             if ($veraChild) {
-                $this->info("   ✓ Created child profile: Vera (ID: {$veraChild->id}, Username: {$veraChild->username})");
+                $this->info("   ✓ Created child profile: Vera (ID: {$veraChild->id}, Username: {$veraChild->profile_name})");
                 
                 // Step 2: Move Vera's videos to child Vera
                 $this->info('📝 Step 2: Moving videos from parent Vera to child Vera...');
@@ -105,7 +105,7 @@ class MigrateUserData extends Command
             $andreaChild = $this->createChildProfile($andreaParent, 'Andrea', '1234', $dryRun);
             
             if ($andreaChild) {
-                $this->info("   ✓ Created child profile: Andrea (ID: {$andreaChild->id}, Username: {$andreaChild->username})");
+                $this->info("   ✓ Created child profile: Andrea (ID: {$andreaChild->id}, Username: {$andreaChild->profile_name})");
                 
                 // Step 5: Move Andrea's videos to child Andrea
                 $this->info('📝 Step 5: Moving videos from parent Andrea to child Andrea...');
@@ -170,27 +170,26 @@ class MigrateUserData extends Command
      */
     protected function createChildProfile(User $parent, string $name, ?string $pin, bool $dryRun = false): ?User
     {
-        // Check if child already exists
-        $existingChild = $parent->children()->where('name', $name)->first();
+        // Check if child already exists (identity is profile_name; name is not fillable)
+        $existingChild = $parent->children()->where('profile_name', $name)->first();
         if ($existingChild) {
             $this->warn("   ⚠ Child '{$name}' already exists (ID: {$existingChild->id})");
             return $existingChild;
         }
 
         if ($dryRun) {
-            $username = User::generateUniqueUsernameFromName($name);
-            $this->line("   [DRY RUN] Would create child: {$name} (username: {$username})");
+            $profileName = User::generateUniqueProfileNameFromName($name, $parent->id);
+            $this->line("   [DRY RUN] Would create child: {$name} (profile_name: {$profileName})");
             return null;
         }
 
-        // Generate unique username
-        $username = User::generateUniqueUsernameFromName($name);
-        $dummyEmail = $username . '@child.local';
+        // Generate unique profile_name
+        $profileName = User::generateUniqueProfileNameFromName($name, $parent->id);
+        $dummyEmail = $profileName . '@child.local';
         $dummyPassword = Hash::make(Str::random(32));
 
         $child = User::create([
-            'name' => $name,
-            'username' => $username,
+            'profile_name' => $profileName,
             'email' => $dummyEmail,
             'password' => $dummyPassword,
             'role' => 'user',

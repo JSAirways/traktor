@@ -33,7 +33,7 @@ class UserLookupService
         return $user ?? User::where('slug', $slug)->first();
     }
 
-    public function findUserByUsername(Request $request, string $username): ?User
+    public function findUserByProfileName(Request $request, string $profileName): ?User
     {
         $device = $this->deviceService->getDeviceFromCookie($request);
         $user = null;
@@ -43,7 +43,7 @@ class UserLookupService
                 $device->load('parent');
             }
 
-            $user = User::where('username', $username)
+            $user = User::where('profile_name', $profileName)
                 ->where(function ($query) use ($device) {
                     $query->where('id', $device->parent->id)
                         ->orWhere('parent_id', $device->parent->id);
@@ -51,7 +51,7 @@ class UserLookupService
                 ->first();
         }
 
-        return $user ?? User::where('username', $username)->first();
+        return $user ?? User::where('profile_name', $profileName)->first();
     }
 
     public function findViewableUserBySlug(Request $request, string $slug): ?User
@@ -78,7 +78,7 @@ class UserLookupService
             ->first();
     }
 
-    public function findViewableUserByUsername(Request $request, string $username): ?User
+    public function findViewableUserByProfileName(Request $request, string $profileName): ?User
     {
         $device = $this->deviceService->getDeviceFromCookie($request);
         $user = null;
@@ -88,7 +88,7 @@ class UserLookupService
                 $device->load('parent');
             }
 
-            $user = User::where('username', $username)
+            $user = User::where('profile_name', $profileName)
                 ->where('is_viewable', true)
                 ->where(function ($query) use ($device) {
                     $query->where('id', $device->parent->id)
@@ -97,7 +97,7 @@ class UserLookupService
                 ->first();
         }
 
-        return $user ?? User::where('username', $username)
+        return $user ?? User::where('profile_name', $profileName)
             ->where('is_viewable', true)
             ->first();
     }

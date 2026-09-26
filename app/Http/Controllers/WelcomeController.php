@@ -41,12 +41,12 @@ class WelcomeController extends Controller
             $children = $parent->children()
                 ->whereIn('id', $visibleChildIds)
                 ->where('is_viewable', true)
-                ->orderBy('username')
+                ->orderBy('profile_name')
                 ->get();
         } else {
             $children = $parent->children()
                 ->where('is_viewable', true)
-                ->orderBy('username')
+                ->orderBy('profile_name')
                 ->get();
         }
         
@@ -89,7 +89,7 @@ class WelcomeController extends Controller
             // Get user's children for profile selection
             $userChildren = $user->children()
                 ->where('is_viewable', true)
-                ->orderBy('username')
+                ->orderBy('profile_name')
                 ->get();
             
             // If user has opted to appear in profile selection, add them to the collection

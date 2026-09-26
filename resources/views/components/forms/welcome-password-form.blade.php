@@ -1,4 +1,4 @@
-@props(['email' => null, 'username' => null, 'deviceName' => null])
+@props(['email' => null, 'profileName' => null, 'deviceName' => null])
 
 @php
     // Show form if there are validation errors for password or email
@@ -12,11 +12,11 @@
                 variant="profile"
                 containerId="passwordFormProfilePicture"
             />
-            <h5 class="text-center text-light mb-4 mt-2" id="passwordFormUsernameDisplay">
-                @if($username && $deviceName)
-                    {{ $deviceName }} ({{ $username }})
-                @elseif($username)
-                    {{ $username }}
+            <h5 class="text-center text-light mb-4 mt-2" id="passwordFormProfileNameDisplay">
+                @if($profileName && $deviceName)
+                    {{ $deviceName }} ({{ $profileName }})
+                @elseif($profileName)
+                    {{ $profileName }}
                 @endif
             </h5>
 

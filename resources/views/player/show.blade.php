@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', ($playlist ?? null) ? $playlist->title . ' - ' . $user->username . "'s Traktor" : $video->title . ' - ' . $user->username . "'s Traktor")
+@section('title', ($playlist ?? null) ? $playlist->title . ' - ' . $user->profile_name . "'s Traktor" : $video->title . ' - ' . $user->profile_name . "'s Traktor")
 @section('body-class', 'bg-dark text-light view-player')
 
 @section('content')
-<x-layout.navbar-gallery :username="$user->username" :user="$user" />
+<x-layout.navbar-gallery :profileName="$user->profile_name" :user="$user" />
 
 <!-- Loading Spinner -->
 <div id="loadingSpinner" class="position-fixed w-100 d-flex justify-content-center align-items-center bg-dark" style="top: 0; left: 0; bottom: 0; right: 0; z-index: 9999;">

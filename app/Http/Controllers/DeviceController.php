@@ -132,9 +132,9 @@ class DeviceController extends Controller
                     // Device already registered with valid token - prevent duplicate registration
                     // User must use password login form to access the device, not register again
                     
-                    // Store email, username, and device name before logout (needed for error message)
+                    // Store email, profile_name, and device name before logout (needed for error message)
                     $email = $parent->email;
-                    $username = $parent->username;
+                    $profileName = $parent->profile_name;
                     $deviceName = $thisUserDevice->device_name ?? DeviceConstants::DEFAULT_DEVICE_NAME;
                     
                     // Log the duplicate attempt for debugging
@@ -156,7 +156,7 @@ class DeviceController extends Controller
                         ->with('device_duplicate_error', [
                             'message' => __('messages.device_already_registered'),
                             'email' => $email,
-                            'username' => $username,
+                            'profile_name' => $profileName,
                             'device_name' => $deviceName,
                         ]);
                 }
@@ -299,10 +299,10 @@ class DeviceController extends Controller
                     
                     // Ensure we have required fields
                     $email = $parent->email ?? '';
-                    $username = $parent->username ?? '';
+                    $profileName = $parent->profile_name ?? '';
                     
-                    if (empty($email) || empty($username)) {
-                        \Log::warning('Device has parent but missing email or username', [
+                    if (empty($email) || empty($profileName)) {
+                        \Log::warning('Device has parent but missing email or profile_name', [
                             'device_id' => $device->id,
                             'parent_id' => $device->parent_user_id
                         ]);
@@ -311,7 +311,7 @@ class DeviceController extends Controller
                     
                     return [
                         'email' => $email,
-                        'username' => $username,
+                        'profile_name' => $profileName,
                         'device_name' => $device->device_name ?? DeviceConstants::DEFAULT_DEVICE_NAME,
                         'parent_id' => $device->parent_user_id,
                         'profile_picture' => $profilePicture,
@@ -326,7 +326,7 @@ class DeviceController extends Controller
                     return null;
                 }
             })->filter(function ($user) {
-                return $user !== null && !empty($user['email']) && !empty($user['username']);
+                return $user !== null && !empty($user['email']) && !empty($user['profile_name']);
             });
 
             return response()->json($users->values()->toArray());

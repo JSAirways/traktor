@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', $user->username . "'s Traktor")
+@section('title', $user->profile_name . "'s Traktor")
 @section('body-class', 'bg-dark text-light')
 
 @section('content')
-<x-layout.navbar-gallery :username="$user->username" :user="$user" />
+<x-layout.navbar-gallery :profileName="$user->profile_name" :user="$user" />
 
 <!-- Loading Spinner - Layer: loading overlay -->
 <div id="loadingSpinner" class="position-fixed w-100 d-flex justify-content-center align-items-center bg-dark" data-layer="loading" style="top: 80px; left: 0; bottom: 0; right: 0; z-index: 9999;">
@@ -75,7 +75,7 @@
     @endif
 </div>
 
-<script data-slug="{{ $user->slug }}" data-channels='{{ json_encode($channels ?? []) }}' data-username="{{ $user->username }}" data-cache-version="{{ $cacheVersion }}"></script>
+<script data-slug="{{ $user->slug }}" data-channels='{{ json_encode($channels ?? []) }}' data-profile-name="{{ $user->profile_name }}" data-cache-version="{{ $cacheVersion }}"></script>
 
 @push('scripts')
     @vite('resources/js/resources/galleries/show.js')

@@ -6,10 +6,10 @@ return [
     'throttle' => 'Zu viele Anmeldeversuche. Versuchen Sie es bitte in :seconds Sekunden erneut.',
     
     'logging_in' => 'Wird angemeldet...',
-    'log_in_as' => 'Anmelden als :username',
+    'log_in_as' => 'Anmelden als :profile_name',
     'invalid_pin' => 'Ungueltige PIN. Bitte versuchen Sie es erneut.',
     'too_many_pin_attempts' => 'Zu viele PIN-Versuche. Bitte versuchen Sie es in :minutes Minuten erneut.',
-    'invalid_credentials' => 'Ungültiger Benutzername oder Passwort. Bitte versuchen Sie es erneut.',
+    'invalid_credentials' => 'Ungültige E-Mail oder Passwort. Bitte versuchen Sie es erneut.',
     
     'forgot_password' => 'Passwort vergessen?',
     'forgot_password_link' => 'Passwort vergessen',

@@ -51,11 +51,11 @@ class GenerateUserSlugs extends Command
                 // Check if user needs a slug
                 $needsSlug = empty($user->slug) || 
                              !preg_match('/^[a-z0-9_-]+$/', $user->slug) ||
-                             $user->slug !== User::generateSlugFromUsername($user->username);
+                             $user->slug !== User::generateSlugFromProfileName($user->profile_name);
 
                 if ($needsSlug) {
-                    // Generate new slug from username
-                    $newSlug = User::generateUniqueSlugFromUsername($user->username, $user->id);
+                    // Generate new slug from profile_name
+                    $newSlug = User::generateUniqueSlugFromProfileName($user->profile_name, $user->id);
                     
                     if (!$dryRun) {
                         $user->slug = $newSlug;
@@ -66,7 +66,7 @@ class GenerateUserSlugs extends Command
                     
                     if ($this->getOutput()->isVerbose()) {
                         $this->newLine();
-                        $this->line("User ID {$user->id} ({$user->username}):");
+                        $this->line("User ID {$user->id} ({$user->profile_name}):");
                         $this->line("  Old slug: " . ($user->getOriginal('slug') ?? 'NULL'));
                         $this->line("  New slug: {$newSlug}");
                     }

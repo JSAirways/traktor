@@ -3,7 +3,7 @@
 @section('content')
 <x-admin.page-header :title="__('admin.device_details')">
     <x-slot name="subtitle">
-        <p class="text-muted mb-0 small">{{ __('admin.parent') }}: <strong>{{ $device->parent->username }}</strong></p>
+        <p class="text-muted mb-0 small">{{ __('admin.parent') }}: <strong>{{ $device->parent->profile_name }}</strong></p>
     </x-slot>
     <x-slot name="controls">
         <div></div>
@@ -105,7 +105,7 @@
                                            class="form-check-input me-3"
                                            {{ in_array($child->id, $visibleChildren) ? 'checked' : '' }}>
                                     <div class="flex-grow-1">
-                                        <div class="fw-bold">{{ $child->username }}</div>
+                                        <div class="fw-bold">{{ $child->profile_name }}</div>
                                         @if(!$child->is_viewable)
                                             <small class="text-warning">{{ __('admin.viewing_disabled') }}</small>
                                         @endif

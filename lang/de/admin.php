@@ -40,6 +40,8 @@ return [
     'profile_selection_pin_help' => 'Verwenden Sie diese 4-stellige PIN, wenn dieses Profil auf dem Familien-Startbildschirm geoeffnet wird.',
     'hide_from_profile_selection' => 'Von Profilauswahl ausblenden',
     'hide_from_profile_selection_help' => 'Ihr Profil erscheint standardmäßig im Profilauswahlbereich. Aktivieren Sie dies, um es auszublenden.',
+    'pause_overlay_enabled' => 'Katzen-GIF beim Pausieren anzeigen',
+    'pause_overlay_enabled_help' => 'Wenn aktiviert, wird beim Pausieren das Bild unscharf und ein zufälliges Katzen-GIF angezeigt. Deaktivieren, um das pausierte Video sichtbar zu lassen.',
     'role_label' => 'Rolle',
     'cannot_change_own_role' => 'Sie können Ihre eigene Rolle nicht ändern.',
     'parent_account_label' => 'Elternkonto',

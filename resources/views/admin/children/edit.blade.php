@@ -43,6 +43,31 @@
         :pictures="$catGifs"
         category="cats"
     />
+
+    {{-- Pause overlay (cat GIF) toggle --}}
+    <div class="mb-3">
+        @php
+            $pauseOverlayChecked = old('pause_overlay_enabled') !== null
+                ? old('pause_overlay_enabled') == '1'
+                : ($child->pause_overlay_enabled ?? true);
+        @endphp
+        <div class="row g-3 align-items-start">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-start justify-content-between gap-3">
+                    <div>
+                        <label class="form-label fw-bold mb-1" for="pause_overlay_enabled">
+                            {{ __('admin.pause_overlay_enabled') }}
+                        </label>
+                        <div class="form-text mt-0">{{ __('admin.pause_overlay_enabled_help') }}</div>
+                    </div>
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pause_overlay_enabled" name="pause_overlay_enabled" value="1" {{ $pauseOverlayChecked ? 'checked' : '' }}>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4"></div>
+        </div>
+    </div>
     
     {{-- Device Visibility --}}
     @php

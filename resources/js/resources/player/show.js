@@ -51,8 +51,15 @@ let playlistVideos = getScriptDataJson?.('data-playlist-videos', []) || [];
 let currentIndex = parseIntSafe?.(getScriptData?.('data-current-index'), 0) || 0;
 let catGifs = getScriptDataJson?.('data-cat-gifs', []) || [];
 
+function syncPauseOverlayFlag() {
+    const raw = getScriptData?.('data-pause-overlay-enabled');
+    // Missing attribute → default enabled
+    window.pauseOverlayEnabled = raw === null || raw === undefined || raw === '' || raw === '1';
+}
+
 if (typeof window !== 'undefined') {
     window.availableCatGifs = catGifs;
+    syncPauseOverlayFlag();
 }
 
 /**
@@ -479,6 +486,7 @@ function refreshDomAndData() {
 
     if (typeof window !== 'undefined') {
         window.availableCatGifs = catGifs;
+        syncPauseOverlayFlag();
     }
 }
 

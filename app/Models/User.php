@@ -35,6 +35,7 @@ class User extends Authenticatable implements HasLocalePreference
         'parental_controls',
         'channel_order',
         'show_all_content_section',
+        'pause_overlay_enabled',
         'hidden_channels',
         'cache_version',
     ];
@@ -55,6 +56,7 @@ class User extends Authenticatable implements HasLocalePreference
         'appears_in_profile_selection' => 'boolean',
         'channel_order' => 'array',
         'show_all_content_section' => 'boolean',
+        'pause_overlay_enabled' => 'boolean',
         'hidden_channels' => 'array',
         'cache_version' => 'datetime',
     ];

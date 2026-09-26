@@ -1051,7 +1051,16 @@ export class Controls {
     }
     
     // Cat GIF functions
+    isPauseOverlayEnabled() {
+        // Default on when flag is missing
+        return typeof window === 'undefined' || window.pauseOverlayEnabled !== false;
+    }
+
     showCatGif() {
+        if (!this.isPauseOverlayEnabled()) {
+            return;
+        }
+
         if (!this.catGifContainer) {
             return;
         }
@@ -1075,6 +1084,10 @@ export class Controls {
      * Only blurs the video iframe, not navbar or control bar
      */
     showPausedOverlay() {
+        if (!this.isPauseOverlayEnabled()) {
+            return;
+        }
+
         const player = document.getElementById('player');
         if (player) {
             player.classList.add('paused');

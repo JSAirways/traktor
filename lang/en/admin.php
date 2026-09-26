@@ -40,6 +40,8 @@ return [
     'profile_selection_pin_help' => 'Use a 4-digit PIN when opening this profile from the family profile selection screen.',
     'hide_from_profile_selection' => 'Hide from Profile Selection',
     'hide_from_profile_selection_help' => 'Your profile appears in the profile selection area by default. Enable this to hide it.',
+    'pause_overlay_enabled' => 'Show cat GIF when paused',
+    'pause_overlay_enabled_help' => 'When enabled, pausing a video blurs the picture and shows a random cat GIF. Disable to keep the paused video visible.',
     'role_label' => 'Role',
     'cannot_change_own_role' => 'You cannot change your own role.',
     'parent_account_label' => 'Parent Account',

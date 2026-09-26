@@ -23,6 +23,7 @@
     'currentIndex' => 0,
     'channelId' => 'all',
     'catGifs' => [],
+    'pauseOverlayEnabled' => true,
 ])
 
 <x-player.video-container :catGifs="$catGifs" />
@@ -58,6 +59,7 @@
 <script 
     data-slug="{{ $user->slug }}" 
     data-cat-gifs='{{ json_encode($catGifs) }}'
+    data-pause-overlay-enabled="{{ ($pauseOverlayEnabled ?? true) ? '1' : '0' }}"
     data-video-id="{{ $currentVideoId }}"
     data-channel-id="{{ $channelId }}"
     @if(isset($playlist) && isset($playlistId))

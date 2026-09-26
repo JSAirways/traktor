@@ -23,6 +23,7 @@
 <script 
     data-slug="{{ $user->slug }}" 
     data-cat-gifs='{{ json_encode($catGifs) }}'
+    data-pause-overlay-enabled="{{ ($pauseOverlayEnabled ?? true) ? '1' : '0' }}"
     data-video-id="{{ $videoId ?? ($currentVideoId ?? (isset($videos) && isset($currentIndex) && $videos->count() > $currentIndex ? $videos[$currentIndex]->video_id : '')) }}"
     @if(isset($video))
         data-video-db-id="{{ $video->id }}"

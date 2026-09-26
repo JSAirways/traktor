@@ -264,6 +264,31 @@
             toggleParentSelector();
         });
     </script>
+
+    {{-- Pause overlay (cat GIF) toggle — available for all profiles --}}
+    <div class="mb-3">
+        @php
+            $pauseOverlayChecked = old('pause_overlay_enabled') !== null
+                ? old('pause_overlay_enabled') == '1'
+                : ($user->pause_overlay_enabled ?? true);
+        @endphp
+        <div class="row g-3 align-items-start">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-start justify-content-between gap-3">
+                    <div>
+                        <label class="form-label fw-bold mb-1" for="pause_overlay_enabled">
+                            {{ __('admin.pause_overlay_enabled') }}
+                        </label>
+                        <div class="form-text mt-0">{{ __('admin.pause_overlay_enabled_help') }}</div>
+                    </div>
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pause_overlay_enabled" name="pause_overlay_enabled" value="1" {{ $pauseOverlayChecked ? 'checked' : '' }}>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4"></div>
+        </div>
+    </div>
     
     <button type="submit" class="btn btn-success w-100 w-md-auto">{{ isset($isSelfEdit) && $isSelfEdit ? __('admin.update_profile') : __('admin.update_user') }}</button>
 </form>

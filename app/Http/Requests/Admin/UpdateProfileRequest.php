@@ -44,6 +44,7 @@ class UpdateProfileRequest extends FormRequest
             'password' => ['nullable', 'string', 'min:8'],
             'cat_gif' => ['nullable', 'string', 'max:255'],
             'appears_in_profile_selection' => ['nullable', 'boolean'],
+            'pause_overlay_enabled' => ['nullable', 'boolean'],
         ];
 
         $rules = $this->addPinValidationRules($rules, $usePin);

@@ -44,6 +44,7 @@ class UpdateChildRequest extends FormRequest
             ],
             'cat_gif' => ['nullable', 'string', 'max:255'],
             'use_pin' => ['nullable'],
+            'pause_overlay_enabled' => ['nullable', 'boolean'],
             'device_visibility' => ['nullable', 'array'],
             'device_visibility.*' => ['nullable'],
         ];

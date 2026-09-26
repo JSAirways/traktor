@@ -353,6 +353,7 @@ class UserController extends Controller
             'cat_gif' => 'nullable|string|max:255',
             'parent_id' => 'nullable|integer|exists:users,id',
             'is_viewable' => 'nullable|boolean',
+            'pause_overlay_enabled' => 'nullable|boolean',
             'account_status' => 'nullable|in:pending,approved,rejected',
         ];
         
@@ -443,6 +444,8 @@ class UserController extends Controller
             $updateData['password'] = Hash::make($validated['password']);
         }
 
+        $updateData['pause_overlay_enabled'] = $request->boolean('pause_overlay_enabled');
+
         $user->update($updateData);
         
         // Handle PIN update for parent accounts (both self-edit and admin edit)
@@ -482,6 +485,8 @@ class UserController extends Controller
         if ($user->parent_id === null) {
             $updateData['appears_in_profile_selection'] = !($request->has('appears_in_profile_selection') && $request->appears_in_profile_selection == '1');
         }
+
+        $updateData['pause_overlay_enabled'] = $request->boolean('pause_overlay_enabled');
 
         if (!empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);

@@ -49,6 +49,7 @@ class PlayerController extends Controller
 
         // Get cat GIFs for pause overlay
         $catGifs = $this->assetService->getCatGifsFromAssets();
+        $pauseOverlayEnabled = $user->pause_overlay_enabled ?? true;
 
         // Render player page directly
         return view('player.show', [
@@ -57,6 +58,7 @@ class PlayerController extends Controller
             'videoId' => $video->video_id,
             'channelId' => $channelId,
             'catGifs' => $catGifs,
+            'pauseOverlayEnabled' => $pauseOverlayEnabled,
         ]);
     }
 
@@ -112,6 +114,7 @@ class PlayerController extends Controller
 
         // Get cat GIFs for pause overlay
         $catGifs = $this->assetService->getCatGifsFromAssets();
+        $pauseOverlayEnabled = $user->pause_overlay_enabled ?? true;
 
         // Prepare playlist data for view
         $playlistData = [
@@ -144,6 +147,7 @@ class PlayerController extends Controller
             'videoId' => $videos->count() > 0 ? $videos[$currentIndex]->video_id : null,
             'channelId' => $channelId,
             'catGifs' => $catGifs,
+            'pauseOverlayEnabled' => $pauseOverlayEnabled,
             'playlistData' => $playlistData,
         ]);
     }
@@ -187,6 +191,7 @@ class PlayerController extends Controller
 
         // Get cat GIFs for pause overlay
         $catGifs = $this->assetService->getCatGifsFromAssets();
+        $pauseOverlayEnabled = $user->pause_overlay_enabled ?? true;
 
         // Check if client wants HTML fragment
         if ($request->accepts('text/html')) {
@@ -196,6 +201,7 @@ class PlayerController extends Controller
                 'videoId' => $video->video_id,
                 'channelId' => $channelId,
                 'catGifs' => $catGifs,
+                'pauseOverlayEnabled' => $pauseOverlayEnabled,
             ])->header('Content-Type', 'text/html');
         }
 
@@ -206,6 +212,7 @@ class PlayerController extends Controller
             'videoId' => $video->video_id,
             'channelId' => $channelId,
             'catGifs' => $catGifs,
+            'pauseOverlayEnabled' => $pauseOverlayEnabled,
         ]);
     }
 
@@ -261,6 +268,7 @@ class PlayerController extends Controller
 
         // Get cat GIFs for pause overlay
         $catGifs = $this->assetService->getCatGifsFromAssets();
+        $pauseOverlayEnabled = $user->pause_overlay_enabled ?? true;
 
         // Check if client wants HTML fragment
         if ($request->accepts('text/html')) {
@@ -272,6 +280,7 @@ class PlayerController extends Controller
                 'currentIndex' => $currentIndex,
                 'channelId' => $channelId,
                 'catGifs' => $catGifs,
+                'pauseOverlayEnabled' => $pauseOverlayEnabled,
             ])->header('Content-Type', 'text/html');
         }
 
@@ -284,6 +293,7 @@ class PlayerController extends Controller
             'currentIndex' => $currentIndex,
             'channelId' => $channelId,
             'catGifs' => $catGifs,
+            'pauseOverlayEnabled' => $pauseOverlayEnabled,
         ]);
     }
 }

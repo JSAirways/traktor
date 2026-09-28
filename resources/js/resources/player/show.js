@@ -138,14 +138,34 @@ function init() {
 
     let hasTriedAutoplay = false;
     const tryAutoplayOnInteraction = () => {
+        if (hasTriedAutoplay) {
+            return;
+        }
+        hasTriedAutoplay = true;
+
         const videoPlayer = getVideoPlayer();
-        if (!hasTriedAutoplay && videoPlayer?.isReady?.() && videoPlayer.play) {
-            hasTriedAutoplay = true;
-            try {
-                videoPlayer.play();
-            } catch (e) {
-                // Autoplay still blocked
-            }
+        if (!videoPlayer?.isReady?.() || !videoPlayer.play) {
+            return;
+        }
+
+        // First document click can be navbar settings after a user pause.
+        // Only unlock autoplay when playback never started — never resume a pause.
+        if (appState?.get?.('isVideoPaused')) {
+            return;
+        }
+
+        const state = videoPlayer.getPlayerState?.();
+        if (
+            typeof YT !== 'undefined'
+            && (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING)
+        ) {
+            return;
+        }
+
+        try {
+            videoPlayer.play();
+        } catch (e) {
+            // Autoplay still blocked
         }
     };
 

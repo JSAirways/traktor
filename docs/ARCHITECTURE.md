@@ -65,7 +65,7 @@ Routing is loaded from `bootstrap/app.php`: `routes/web.php` and `routes/admin.p
 
 | Alias / stack | Role |
 |---------------|------|
-| `web` + `SetLocale` | Session, cookies, CSRF, locale |
+| `web` + `SetLocale` | Session, cookies, CSRF (`App\Http\Middleware\VerifyCsrfToken` via `bootstrap/app.php`), locale |
 | `account.approved` | Block unapproved parents from admin |
 | `viewing.session` | Require valid viewing unlock for gallery/player |
 | `rate.limit.pin` | Throttle attempts (scoped: `view`, `admin-password`) |

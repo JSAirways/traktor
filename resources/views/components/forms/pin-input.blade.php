@@ -7,7 +7,9 @@
     'loadingId' => 'pinEntryLoading',
     'placeholder' => null,
     'autofocus' => false,
-    'autocomplete' => 'off',
+    // one-time-code: PIN/OTP semantics — avoids password-manager save/fill prompts
+    // that type="password" often triggers even with autocomplete="off".
+    'autocomplete' => 'one-time-code',
 ])
 
 <div class="mb-3">
@@ -19,6 +21,12 @@
            pattern="{{ $pattern }}"
            inputmode="numeric"
            autocomplete="{{ $autocomplete }}"
+           autocorrect="off"
+           autocapitalize="off"
+           spellcheck="false"
+           data-lpignore="true"
+           data-1p-ignore="true"
+           data-bwignore="true"
            @if($placeholder !== null) placeholder="{{ $placeholder }}" @endif
            required
            @if($autofocus) autofocus @endif>

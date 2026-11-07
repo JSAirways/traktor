@@ -4,7 +4,7 @@ Traktor uses Laravel's CSRF protection for state-changing web requests. Browser 
 
 ## Server-side
 
-- Middleware: `App\Http\Middleware\VerifyCsrfToken`
+- Middleware: `App\Http\Middleware\VerifyCsrfToken` (registered in `bootstrap/app.php` via `$middleware->web(replace: …)` — Laravel 12’s default `ValidateCsrfToken` has an empty except list, so the app class must replace it or exclusions never apply)
 - All `POST` / `PUT` / `PATCH` / `DELETE` requests require a valid token unless explicitly excluded.
 - Blade forms: use `@csrf` or `<meta name="csrf-token" content="{{ csrf_token() }}">` in layouts.
 

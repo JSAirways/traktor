@@ -137,6 +137,7 @@ body.modal-open .modal * {
 }
 
 /* Large PIN inputs in frontend access modals */
+/* Mask digits with CSS instead of type=password to avoid password-manager prompts. */
 #pinEntryModal .pin-entry-input,
 #adminPasswordModal .pin-entry-input {
     font-size: 3rem;
@@ -149,6 +150,8 @@ body.modal-open .modal * {
     border: 2px solid var(--bs-light);
     border-radius: 0.375rem;
     padding: 1rem 1.5rem;
+    -webkit-text-security: disc;
+    text-security: disc;
 }
 
 #pinEntryModal .pin-entry-input:focus,

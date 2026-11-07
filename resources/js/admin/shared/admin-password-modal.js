@@ -4,7 +4,7 @@
  */
 
 import { setupModalAccessibility, setupModalFocus, setupModalInputReset, openModal } from '../../core/modal-utils.js';
-import { isFullscreen, exitFullscreen, makeRequest, getTranslation, updateCsrfToken } from '../../core/utils.js';
+import { isFullscreen, exitFullscreen, makeRequest, getTranslation, updateCsrfToken, refreshCsrfToken } from '../../core/utils.js';
 import { LoadingStateManager } from '../../core/loading-state-manager.js';
 import { initializePinInput } from '../../core/pin-input.js';
 
@@ -118,6 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (offcanvasInstance) {
                 offcanvasInstance.hide();
             }
+        }
+
+        // Gallery/home pages can outlive the session CSRF token; refresh before auth.
+        try {
+            await refreshCsrfToken?.();
+        } catch (_ignored) {
+            // verify-password is CSRF-exempt; auth can still proceed if refresh fails.
         }
         
         if (isFullscreen?.()) {
@@ -249,6 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const adminPinForm = document.getElementById('adminPinForm');
+    adminPinForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+    });
+
     if (adminPinInput) {
         const verifyAdminUrl = adminPasswordForm?.action || '/admin/verify-password';
 
@@ -262,16 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 adminPinInput.disabled = true;
 
                 try {
-                    const formData = new FormData();
-                    formData.append('pin', String(pin));
-                    const csrfInput = adminPasswordForm?.querySelector('input[name="_token"]');
-                    if (csrfInput?.value) {
-                        formData.append('_token', csrfInput.value);
-                    }
-
+                    // Do not attach a page _token: verify-password is CSRF-exempt, and a
+                    // stale token from a long-lived gallery page previously caused 419s
+                    // when the app CSRF middleware exceptions were not registered.
                     const response = await makeRequest(verifyAdminUrl, {
                         method: 'POST',
-                        body: formData,
+                        body: { pin: String(pin) },
                         responseType: 'json',
                         skipCsrf: true,
                         headers: { Accept: 'application/json' },

@@ -48,6 +48,7 @@ Account lifecycle statuses: `pending` → `approved` / `rejected`.
 - Per-profile content library with visibility, ordering, bulk actions, channel sidebar layout
 - Channel import UI and background import jobs when queue is configured
 - YouTube API key configured in **Admin → Settings** (database `settings` table, not `.env`)
+- If YouTube asks the viewer to sign in to prove they are not a bot, a parent opens **YouTube asks you to sign in?** on **Admin → Settings** in the same browser and completes YouTube's own sign-in there. The player loads only after that section is opened. The YouTube session stays in the browser; Traktor does not store it. A sign-in on another device does not apply here.
 
 ### Analytics
 

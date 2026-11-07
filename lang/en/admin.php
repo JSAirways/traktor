@@ -183,7 +183,13 @@ return [
     'admin_notification_emails_help' => 'Enter one or more email addresses separated by commas. These emails will receive notifications for new user registrations and other admin-related events.',
     'admin_notification_emails_invalid' => 'One or more email addresses are invalid. Please check your input.',
     'save_settings' => 'Save Settings',
-    
+    'youtube_signin_title' => 'YouTube asks you to sign in?',
+    'youtube_signin_step_1' => 'Press Sign in on the video below.',
+    'youtube_signin_step_2' => 'If Google opens its own page, finish there, come back to Settings, and press Reload player.',
+    'youtube_signin_step_3' => 'When this video plays, open a video in the kid player in this same browser.',
+    'youtube_signin_note' => 'Signing in on another device does not help this browser.',
+    'youtube_signin_reload' => 'Reload player',
+
     // YouTube Quota Monitoring
     'youtube_quota_title' => 'YouTube API Quota',
     'youtube_quota_refresh' => 'Refresh',

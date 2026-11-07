@@ -11,6 +11,44 @@
 
 @push('styles')
     @vite(['resources/js/admin/settings/quota-monitor.js'])
+    <style>
+        .youtube-signin-toggle {
+            width: 100%;
+            text-align: left;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: inherit;
+        }
+
+        .youtube-signin-toggle .bi-chevron-down {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        .youtube-signin-toggle[aria-expanded="true"] .bi-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .youtube-signin-frame-wrap {
+            width: 100%;
+        }
+
+        .youtube-signin-frame {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%;
+        }
+
+        .youtube-signin-frame iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -164,6 +202,43 @@
     </div>
 </form>
 
+{{-- YouTube sign-in: plain embed, loaded only after the parent opens the section --}}
+<div class="card mb-4" id="youtube-signin">
+    <div class="card-header">
+        <button class="btn btn-link text-decoration-none px-0 youtube-signin-toggle"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#youtubeSigninCollapse"
+                aria-expanded="false"
+                aria-controls="youtubeSigninCollapse">
+            <i class="bi bi-chevron-down me-1"></i>{{ __('admin.youtube_signin_title') }}
+        </button>
+    </div>
+    <div class="collapse" id="youtubeSigninCollapse">
+        <div class="card-body">
+            <ol class="mb-3">
+                <li>{{ __('admin.youtube_signin_step_1') }}</li>
+                <li>{{ __('admin.youtube_signin_step_2') }}</li>
+                <li>{{ __('admin.youtube_signin_step_3') }}</li>
+            </ol>
+            <p class="text-muted">{{ __('admin.youtube_signin_note') }}</p>
+            <button type="button" class="btn btn-outline-secondary mb-3" id="youtubeSigninReload">
+                <i class="bi bi-arrow-clockwise"></i> {{ __('admin.youtube_signin_reload') }}
+            </button>
+            <div class="youtube-signin-frame-wrap">
+                <div class="youtube-signin-frame">
+                    <iframe
+                        id="youtubeSigninFrame"
+                        data-src="https://www.youtube.com/embed/jNQXAC9IVRw?rel=0"
+                        title="{{ __('admin.youtube_signin_title') }}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Cache Management Section --}}
 <hr class="my-4">
 
@@ -181,4 +256,42 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        (function () {
+            var collapse = document.getElementById('youtubeSigninCollapse');
+            var frame = document.getElementById('youtubeSigninFrame');
+            var reload = document.getElementById('youtubeSigninReload');
+            if (!collapse || !frame) {
+                return;
+            }
+
+            var url = frame.getAttribute('data-src');
+
+            function loadFrame(force) {
+                if (!url) {
+                    return;
+                }
+                if (!force && frame.getAttribute('src')) {
+                    return;
+                }
+                frame.removeAttribute('src');
+                window.setTimeout(function () {
+                    frame.setAttribute('src', url);
+                }, 0);
+            }
+
+            collapse.addEventListener('shown.bs.collapse', function () {
+                loadFrame(false);
+            });
+
+            if (reload) {
+                reload.addEventListener('click', function () {
+                    loadFrame(true);
+                });
+            }
+        })();
+    </script>
+@endpush
 @endsection

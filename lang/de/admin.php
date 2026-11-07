@@ -181,7 +181,13 @@ return [
     'admin_notification_emails_help' => 'Geben Sie eine oder mehrere E-Mail-Adressen ein, getrennt durch Kommas. Diese E-Mails erhalten Benachrichtigungen für neue Benutzerregistrierungen und andere admin-bezogene Ereignisse.',
     'admin_notification_emails_invalid' => 'Eine oder mehrere E-Mail-Adressen sind ungültig. Bitte überprüfen Sie Ihre Eingabe.',
     'save_settings' => 'Einstellungen speichern',
-    
+    'youtube_signin_title' => 'YouTube bittet Sie, sich anzumelden?',
+    'youtube_signin_step_1' => 'Drücken Sie im Video unten auf Anmelden.',
+    'youtube_signin_step_2' => 'Wenn Google eine eigene Seite öffnet, schließen Sie die Anmeldung dort ab, kehren Sie zu den Einstellungen zurück und drücken Sie Player neu laden.',
+    'youtube_signin_step_3' => 'Wenn dieses Video abgespielt wird, öffnen Sie ein Video in der Kinderansicht in demselben Browser.',
+    'youtube_signin_note' => 'Eine Anmeldung auf einem anderen Gerät hilft diesem Browser nicht.',
+    'youtube_signin_reload' => 'Player neu laden',
+
     // YouTube Quota Monitoring
     'youtube_quota_title' => 'YouTube API Quota',
     'youtube_quota_refresh' => 'Aktualisieren',

@@ -1,18 +1,20 @@
 # Traktor
 
-Traktor is a curated video gallery platform where parents manage YouTube content for their children, and kids browse it through a simple, kid-friendly interface.
+Traktor is a curated video gallery where parents manage YouTube content for their children, and kids browse it through a simple, kid-friendly interface.
 
 ## Documentation
 
 Full product and developer docs live in [`docs/`](docs/README.md):
 
-- [Technical brief](docs/TECHNICAL_BRIEF.md) — capabilities, roles, features
-- [Architecture](docs/ARCHITECTURE.md) — device identity, sessions, services
+- [Technical brief](docs/TECHNICAL_BRIEF.md) — purpose, roles, feature map
+- [Architecture](docs/ARCHITECTURE.md) — device identity, sessions, CSRF/AJAX, services
 - [Development](docs/DEVELOPMENT.md) — setup, env, workflows
 - [Schema notes](docs/SCHEMA_NOTES.md) — tables and local bootstrap
-- [CSRF token guide](docs/CSRF_TOKEN_GUIDE.md) — AJAX CSRF handling
+- [Conventions](docs/CONVENTIONS.md) — project coding rules
 
-When committing or pushing, keep docs in sync with code — see [Documentation on commit & push](docs/DEVELOPMENT.md#documentation-on-commit--push).
+For AI agents: [AGENTS.md](AGENTS.md). For contributors: [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
+
+When behaviour or setup changes, it’s helpful to keep docs in sync — see [Keeping docs in sync](docs/DEVELOPMENT.md#keeping-docs-in-sync).
 
 ## Features
 
@@ -119,6 +121,10 @@ Key settings in `.env`:
 
 See [`.env.example`](.env.example) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full list.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and a few practical notes. For vulnerabilities, see [SECURITY.md](SECURITY.md).
+
 ## Author
 
 **Jonan Steiner**
@@ -128,4 +134,4 @@ See [`.env.example`](.env.example) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md
 
 ## License
 
-This project is open-sourced software licensed under the [MIT license](LICENSE).
+MIT — see [LICENSE](LICENSE).

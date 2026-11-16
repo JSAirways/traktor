@@ -70,7 +70,43 @@ Routing is loaded from `bootstrap/app.php`: `routes/web.php` and `routes/admin.p
 | `viewing.session` | Require valid viewing unlock for gallery/player |
 | `rate.limit.pin` | Throttle attempts (scoped: `view`, `admin-password`) |
 
-CSRF exceptions (see `VerifyCsrfToken` and [CSRF token guide](CSRF_TOKEN_GUIDE.md)): selected device/analytics/admin-password endpoints used by the frontend. `POST /admin/verify-password` accepts either a password or a 4-digit admin PIN. Admin PIN is not rate-limited; password fallback uses `admin_password_attempts_*`. Viewing PIN uses `view_pin_attempts_*`.
+`POST /admin/verify-password` accepts either a password or a 4-digit admin PIN. Admin PIN is not rate-limited; password fallback uses `admin_password_attempts_*`. Viewing PIN uses `view_pin_attempts_*`. See [CSRF and AJAX](#csrf-and-ajax) below for exclusions and client helpers.
+
+## CSRF and AJAX
+
+Traktor uses Laravel CSRF for state-changing web requests. Browser clients should use the shared `makeRequest` helper rather than hand-rolling tokens.
+
+### Server-side
+
+- Middleware: `App\Http\Middleware\VerifyCsrfToken` (registered in `bootstrap/app.php` via `$middleware->web(replace: …)` — Laravel 12’s default `ValidateCsrfToken` has an empty except list, so the app class must replace it or exclusions never apply).
+- All `POST` / `PUT` / `PATCH` / `DELETE` requests require a valid token unless explicitly excluded.
+- Blade forms: `@csrf` or `<meta name="csrf-token" content="{{ csrf_token() }}">` in layouts.
+
+### Excluded routes
+
+These paths skip CSRF verification because they use other security measures (device cookies, rate limiting, viewing-session checks). Canonical list: `$except` in `VerifyCsrfToken`.
+
+| Path | Rationale |
+|------|-----------|
+| `admin/verify-password` | Device registration + password + throttle |
+| `device/logout` | Device cookie; clears trust state |
+| `api/analytics/*` | Viewing-session validation; long-lived player sessions |
+
+### Token refresh
+
+`GET /csrf-token` returns `{ "token": "..." }` for stale tokens on cached or long-lived PWA pages.
+
+### Client-side
+
+Use `makeRequest` from `resources/js/core/utils.js`:
+
+1. Reads the token from `<meta name="csrf-token">` or `input[name="_token"]`.
+2. Sends `X-CSRF-TOKEN` on mutating requests.
+3. On **419**, calls `/csrf-token`, updates the DOM, and retries once.
+
+Pass `skipCsrf: true` only for routes in `VerifyCsrfToken::$except`. Helpers: `getCsrfToken()`, `refreshCsrfToken()`, `updateCsrfToken(token)`.
+
+Common mistakes: manual `X-CSRF-TOKEN` headers; assuming analytics endpoints need CSRF; ignoring stale tokens on long-lived PWA pages (rely on 419 refresh or call `refreshCsrfToken()` after returning from background).
 
 ## Domain layout
 
@@ -121,6 +157,13 @@ Policies: `UserPolicy`, `ContentPolicy`, `SettingPolicy`. Models under `app/Mode
 
 ### API routing note
 
-Browser-facing `/api/*` routes are registered in **`routes/web.php`** so they share the session/CSRF stack. The file `routes/api.php` still exists (legacy / reference) but is **not loaded** — `RouteServiceProvider` is not registered in `bootstrap/providers.php`. Do not add new browser API routes there; use `web.php`.
+Browser-facing `/api/*` routes are registered in **`routes/web.php`** so they share the session/CSRF stack. The file `routes/api.php` still exists (legacy / reference) but is **not loaded** — `RouteServiceProvider` is not registered in `bootstrap/providers.php`. Don’t add new browser API routes there; use `web.php`.
 
 Analytics: `POST /api/analytics/track` is the active endpoint. `POST /api/analytics/session/start` and `/end` remain as no-op stubs for backward compatibility — sessions are derived server-side from events.
+
+## Related docs
+
+- [Technical brief](TECHNICAL_BRIEF.md)
+- [Development](DEVELOPMENT.md)
+- [Schema notes](SCHEMA_NOTES.md)
+- [Conventions](CONVENTIONS.md)

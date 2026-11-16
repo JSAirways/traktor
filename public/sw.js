@@ -1,7 +1,6 @@
 /**
  * Service Worker for Traktor PWA
  * Handles offline caching and asset management
- * Follows best-practices-rulebook.md for PWA implementation
  */
 
 const CACHE_NAME = 'traktor';

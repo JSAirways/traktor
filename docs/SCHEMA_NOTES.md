@@ -64,4 +64,11 @@ High-level data model for developers. Prefer migrations under `database/migratio
 | `2025_11_17_231253_add_channel_order_and_show_all_content_…` | Per-profile gallery channel layout |
 | `2026_08_19_210000_add_admin_pin_to_users_table` | Adds separate parent admin-access PIN storage |
 
-Do not re-run wipe migrations against production without an explicit backup and approval.
+Don’t re-run wipe migrations against a live database without a backup.
+
+## Related docs
+
+- [Technical brief](TECHNICAL_BRIEF.md)
+- [Architecture](ARCHITECTURE.md)
+- [Development](DEVELOPMENT.md)
+- [Conventions](CONVENTIONS.md)

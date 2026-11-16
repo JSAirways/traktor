@@ -100,11 +100,11 @@ Vite entry points (see `vite.config.js`):
 
 Device identity: `resources/js/core/device-identity.js`
 
-After JS/CSS changes: `npm run build` (or leave `npm run dev` running)
+After JS/CSS changes: `npm run build` (or leave `npm run dev` running).
 
-Clear compiled views when Blade caches confuse you: `php artisan view:clear`
+Clear compiled views when Blade caches confuse you: `php artisan view:clear`.
 
-CSRF in AJAX: use `makeRequest` from `core/utils.js` — see [CSRF token guide](CSRF_TOKEN_GUIDE.md).
+CSRF in AJAX: use `makeRequest` from `core/utils.js` — see [Architecture — CSRF and AJAX](ARCHITECTURE.md#csrf-and-ajax).
 
 ## Queue
 
@@ -133,69 +133,37 @@ Useful after device-related changes:
 5. Incognito → blank discovery (partitioned storage)
 6. Second parent on same browser → second row, shared `device_uid`
 
-## Conventions
+## Conventions (pointers)
+
+Full rules: [Conventions](CONVENTIONS.md). Highlights:
 
 - Prefer services under `app/Services/` over fat controllers
-- Do not commit `.env` or secrets (`.env.example` is the committed template)
-- Device identity must remain PS4-safe: no `crypto.randomUUID()` / no reliance on `crypto.subtle` for identity
-- Migrations that wipe data must be called out in comments and in docs (see device_uid cutover)
+- Don’t commit `.env` or secrets (`.env.example` is the committed template)
+- Device identity needs to stay PS4-safe: no `crypto.randomUUID()` / no reliance on `crypto.subtle` for identity
+- Migrations that wipe data should be called out in comments and in docs (see device_uid cutover)
 - New browser `/api/*` routes belong in `routes/web.php`, not `routes/api.php` (see [Architecture](ARCHITECTURE.md))
-- **Keep docs in sync when committing** — see [Documentation on commit & push](#documentation-on-commit--push) below
 
-## Documentation on commit & push
+## Keeping docs in sync
 
-Treat documentation as part of the change, not a follow-up task. Before every **commit** (and again before **push** if you amended or added commits locally), check whether the code diff requires a doc update and include those edits in the same commit or push.
-
-### When docs must be updated
+If a change affects behaviour, setup, or conventions, update the matching doc in the same commit when you can.
 
 | You changed… | Update… |
 |--------------|---------|
 | Product behaviour, roles, user-facing flows | [TECHNICAL_BRIEF.md](TECHNICAL_BRIEF.md) |
-| Sessions, device identity, middleware, routes, services | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Sessions, device identity, middleware, routes, services, CSRF/AJAX | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Setup, env vars, Vite entries, local workflows | [DEVELOPMENT.md](DEVELOPMENT.md) and [`.env.example`](../.env.example) |
 | Database columns, migrations, bootstrap steps | [SCHEMA_NOTES.md](SCHEMA_NOTES.md) |
-| Coding patterns, file layout, conventions | [BEST_PRACTICES_RULEBOOK.md](BEST_PRACTICES_RULEBOOK.md) |
-| CSRF exceptions or AJAX token handling | [CSRF_TOKEN_GUIDE.md](CSRF_TOKEN_GUIDE.md) |
+| Coding patterns or project rules | [CONVENTIONS.md](CONVENTIONS.md) |
 | High-level project overview or quick start | Root [README.md](../README.md) |
+| Agent/contributor entrypoints | [AGENTS.md](../AGENTS.md), [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | New doc file or doc index entry | [docs/README.md](README.md) |
 
-Skip doc updates only for changes that cannot affect behaviour or developer setup (e.g. typo in a comment, pure test assertion tweak with no API change).
-
-### Pre-commit checklist
-
-1. **Scan the diff** — routes, env/config keys, migrations, public APIs, admin UI flows, and file moves are the usual triggers.
-2. **Open the mapped doc(s)** from the table above and fix anything now wrong or missing.
-3. **Env vars** — new or renamed `env()` keys go in `.env.example` with a short comment; document defaults in DEVELOPMENT if non-obvious.
-4. **Destructive migrations** — note them in SCHEMA_NOTES and ARCHITECTURE (same as device_uid cutover).
-5. **Rulebook file trees** — if you add/remove/rename files under `resources/js/`, `resources/views/`, or `app/Services/`, update the trees in BEST_PRACTICES_RULEBOOK when the layout is meant to be canonical.
-6. **Same commit** — stage doc changes together with code (`git add docs/ .env.example README.md` as needed).
-
-### Pre-push checklist
-
-1. **Re-read commits since last push** — if any commit lacks doc updates that the diff implies, amend or add a docs commit before pushing.
-2. **Links and paths** — quick pass that new doc links resolve and file paths match the repo.
-3. **No secrets in docs** — examples use placeholders; never copy values from `.env`.
-
-### Suggested git flow
-
-```bash
-# After implementing a feature or fix
-git diff                    # identify doc impact
-# edit docs / .env.example as needed
-git add -A                  # or add code + docs explicitly
-git commit -m "feat: …"     # message can mention doc updates when substantial
-
-# Before push
-git log origin/main..HEAD   # review unpushed commits for missing doc coverage
-git push
-```
-
-For large features, update docs incrementally in the same branch so the PR/commit history stays reviewable.
+Skip doc updates for changes that don’t affect behaviour or setup (e.g. a comment typo, a pure test assertion tweak). New or renamed `env()` keys belong in `.env.example`; destructive migrations deserve a note in SCHEMA_NOTES and ARCHITECTURE. Don’t copy secrets from `.env` into docs.
 
 ## Related docs
 
 - [Technical brief](TECHNICAL_BRIEF.md)
 - [Architecture](ARCHITECTURE.md)
 - [Schema notes](SCHEMA_NOTES.md)
-- [CSRF token guide](CSRF_TOKEN_GUIDE.md)
+- [Conventions](CONVENTIONS.md)
 - Root [README](../README.md) — quick start and YouTube key setup
